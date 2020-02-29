@@ -5,6 +5,9 @@
 
 **/Release/**
 **/Debug/**
+*/res/environments/*
+*/res/models/*
+*/res/textures/*
 
 # Model resource files too large to upload
 *.obj

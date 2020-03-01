@@ -234,6 +234,38 @@ void ShaderProgram::setUniform(std::string uniform, int i, int i1, int i2, int i
 	}
 }
 
+void ShaderProgram::setUniform(std::string uniform, unsigned int i) {
+	int32 id = getUniform(uniform);
+
+	if (id >= 0) {
+		glUniform1ui(id, i);
+	}
+}
+
+void ShaderProgram::setUniform(std::string uniform, unsigned int i, unsigned int i1) {
+	int32 id = getUniform(uniform);
+
+	if (id >= 0) {
+		glUniform2ui(id, i, i1);
+	}
+}
+
+void ShaderProgram::setUniform(std::string uniform, unsigned int i, unsigned int i1, unsigned int i2) {
+	int32 id = getUniform(uniform);
+
+	if (id >= 0) {
+		glUniform3ui(id, i, i1, i2);
+	}
+}
+
+void ShaderProgram::setUniform(std::string uniform, unsigned int i, unsigned int i1, unsigned int i2, unsigned int i3) {
+	int32 id = getUniform(uniform);
+
+	if (id >= 0) {
+		glUniform4ui(id, i, i1, i2, i3);
+	}
+}
+
 void ShaderProgram::setUniform(std::string uniform, bool b) {
 	int32 id = getUniform(uniform);
 
@@ -242,28 +274,20 @@ void ShaderProgram::setUniform(std::string uniform, bool b) {
 	}
 }
 
-void ShaderProgram::setUniform(std::string uniform, fvec2 v) {
-	int32 id = getUniform(uniform);
+void ShaderProgram::setUniform(std::string uniform, fvec1 v) {
+	setUniform(uniform, v.x);
+}
 
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y);
-	}
+void ShaderProgram::setUniform(std::string uniform, fvec2 v) {
+	setUniform(uniform, v.x, v.y);
 }
 
 void ShaderProgram::setUniform(std::string uniform, fvec3 v) {
-	int32 id = getUniform(uniform);
-
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y, v.z);
-	}
+	setUniform(uniform, v.x, v.y, v.z);
 }
 
 void ShaderProgram::setUniform(std::string uniform, fvec4 v) {
-	int32 id = getUniform(uniform);
-
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y, v.z, v.w);
-	}
+	setUniform(uniform, v.x, v.y, v.z, v.w);
 }
 
 void ShaderProgram::setUniform(std::string uniform, fmat2x2 m) {
@@ -338,39 +362,35 @@ void ShaderProgram::setUniform(std::string uniform, fmat4x4 m) {
 	}
 }
 
+void ShaderProgram::setUniform(std::string uniform, dvec1 v) {
+#ifdef DOUBLE_PRECISION_UNIFORMS_ENABLED
+	setUniform(uniform, v.x);
+#else
+	setUniform(uniform, fvec1(v));
+#endif
+}
+
 void ShaderProgram::setUniform(std::string uniform, dvec2 v) {
 #ifdef DOUBLE_PRECISION_UNIFORMS_ENABLED
-	int32 id = getUniform(uniform);
-
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y);
-	}
+	setUniform(uniform, v.x, v.y);
 #else
-	this->setUniform(uniform, fvec2(v));
+	setUniform(uniform, fvec2(v));
 #endif
 }
 
 void ShaderProgram::setUniform(std::string uniform, dvec3 v) {
 #ifdef DOUBLE_PRECISION_UNIFORMS_ENABLED
-	int32 id = getUniform(uniform);
-
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y, v.z);
-	}
+	setUniform(uniform, v.x, v.y, v.z);
 #else
-	this->setUniform(uniform, fvec3(v));
+	setUniform(uniform, fvec3(v));
 #endif
 }
 
 void ShaderProgram::setUniform(std::string uniform, dvec4 v) {
 #ifdef DOUBLE_PRECISION_UNIFORMS_ENABLED
-	int32 id = getUniform(uniform);
-
-	if (id >= 0) {
-		setUniform(uniform, v.x, v.y, v.z, v.w);
-	}
+	setUniform(uniform, v.x, v.y, v.z, v.w);
 #else
-	this->setUniform(uniform, fvec4(v));
+	setUniform(uniform, fvec4(v));
 #endif
 }
 
@@ -382,7 +402,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat2x2 m) {
 		glUniformMatrix2dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat2x2(m));
+	setUniform(uniform, fmat2x2(m));
 #endif
 }
 
@@ -394,7 +414,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat2x3 m) {
 		glUniformMatrix2x3dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat2x3(m));
+	setUniform(uniform, fmat2x3(m));
 #endif
 }
 
@@ -406,7 +426,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat2x4 m) {
 		glUniformMatrix2x4dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat2x4(m));
+	setUniform(uniform, fmat2x4(m));
 #endif
 }
 
@@ -418,7 +438,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat3x2 m) {
 		glUniformMatrix3x2dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat3x2(m));
+	setUniform(uniform, fmat3x2(m));
 #endif
 }
 
@@ -430,7 +450,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat3x3 m) {
 		glUniformMatrix3dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat3x3(m));
+	setUniform(uniform, fmat3x3(m));
 #endif
 }
 
@@ -442,7 +462,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat3x4 m) {
 		glUniformMatrix3x4dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat3x4(m));
+	setUniform(uniform, fmat3x4(m));
 #endif
 }
 
@@ -454,7 +474,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat4x2 m) {
 		glUniformMatrix4x2dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat4x2(m));
+	setUniform(uniform, fmat4x2(m));
 #endif
 }
 
@@ -466,7 +486,7 @@ void ShaderProgram::setUniform(std::string uniform, dmat4x3 m) {
 		glUniformMatrix4x3dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat4x3(m));
+	setUniform(uniform, fmat4x3(m));
 #endif
 }
 
@@ -478,8 +498,40 @@ void ShaderProgram::setUniform(std::string uniform, dmat4x4 m) {
 		glUniformMatrix4dv(id, 1, GL_FALSE, glm::value_ptr(m));
 	}
 #else
-	this->setUniform(uniform, fmat4x4(m));
+	setUniform(uniform, fmat4x4(m));
 #endif
+}
+
+void ShaderProgram::setUniform(std::string uniform, ivec1 v) {
+	setUniform(uniform, v.x);
+}
+
+void ShaderProgram::setUniform(std::string uniform, ivec2 v) {
+	setUniform(uniform, v.x, v.y);
+}
+
+void ShaderProgram::setUniform(std::string uniform, ivec3 v) {
+	setUniform(uniform, v.x, v.y, v.z);
+}
+
+void ShaderProgram::setUniform(std::string uniform, ivec4 v) {
+	setUniform(uniform, v.x, v.y, v.z, v.w);
+}
+
+void ShaderProgram::setUniform(std::string uniform, uvec1 v) {
+	setUniform(uniform, v.x);
+}
+
+void ShaderProgram::setUniform(std::string uniform, uvec2 v) {
+	setUniform(uniform, v.x, v.y);
+}
+
+void ShaderProgram::setUniform(std::string uniform, uvec3 v) {
+	setUniform(uniform, v.x, v.y, v.z);
+}
+
+void ShaderProgram::setUniform(std::string uniform, uvec4 v) {
+	setUniform(uniform, v.x, v.y, v.z, v.w);
 }
 
 int32 ShaderProgram::getUniform(std::string uniform) {
@@ -531,6 +583,7 @@ Shader::Shader(uint32 type, std::string file) {
 
 	std::stringstream parsedSource;
 	parsedSource << "#version 440 core\n";
+	parsedSource << "#extension GL_ARB_bindless_texture : require\n";
 	parsedSource << "#line 1\n";
 
 	std::vector<std::string> includes;

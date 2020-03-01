@@ -132,41 +132,41 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	m_screenShader->setUniform("screenResolution", fvec2(m_width, m_height));
 
 	int32_t index = 0;
-	m_albedoTexture->bind(index);
-	m_screenShader->setUniform("albedoTexture", index++);
+	m_albedoTexture->makeResident(true);
+	m_screenShader->setUniform("albedoTexture", m_albedoTexture->getPackedTextureHandle());
 	
-	m_normalTexture->bind(index);
-	m_screenShader->setUniform("normalTexture", index++);
+	m_normalTexture->makeResident(true);
+	m_screenShader->setUniform("normalTexture", m_normalTexture->getPackedTextureHandle());
+
+	m_roughnessTexture->makeResident(true);
+	m_screenShader->setUniform("roughnessTexture", m_roughnessTexture->getPackedTextureHandle());
+
+	m_metalnessTexture->makeResident(true);
+	m_screenShader->setUniform("metalnessTexture", m_metalnessTexture->getPackedTextureHandle());
 	
-	m_roughnessTexture->bind(index);
-	m_screenShader->setUniform("roughnessTexture", index++);
+	m_ambientOcclusionTexture->makeResident(true);
+	m_screenShader->setUniform("ambientOcclusionTexture", m_ambientOcclusionTexture->getPackedTextureHandle());
 	
-	m_metalnessTexture->bind(index);
-	m_screenShader->setUniform("metalnessTexture", index++);
+	m_irradianceTexture->makeResident(true);
+	m_screenShader->setUniform("irradianceTexture", m_irradianceTexture->getPackedTextureHandle());
+
+	m_reflectionTexture->makeResident(true);
+	m_screenShader->setUniform("reflectionTexture", m_reflectionTexture->getPackedTextureHandle());
 	
-	m_ambientOcclusionTexture->bind(index);
-	m_screenShader->setUniform("ambientOcclusionTexture", index++);
+	m_depthTexture->makeResident(true);
+	m_screenShader->setUniform("depthTexture", m_depthTexture->getPackedTextureHandle());
 	
-	m_irradianceTexture->bind(index);
-	m_screenShader->setUniform("irradianceTexture", index++);
-	
-	m_reflectionTexture->bind(index);
-	m_screenShader->setUniform("reflectionTexture", index++);
-	
-	m_depthTexture->bind(index);
-	m_screenShader->setUniform("depthTexture", index++);
-	
-	m_prevDepthTexture->bind(index);
-	m_screenShader->setUniform("prevDepthTexture", index++);
-	
-	skybox->bindEnvironmentMap(index);
-	m_screenShader->setUniform("skyboxEnvironmentTexture", index++);
+	m_prevDepthTexture->makeResident(true);
+	m_screenShader->setUniform("prevDepthTexture", m_prevDepthTexture->getPackedTextureHandle());
+
+	skybox->getEnvironmentMap()->makeResident(true);
+	m_screenShader->setUniform("skyboxEnvironmentTexture", skybox->getEnvironmentMap()->getPackedTextureHandle());
 
 	glBindImageTexture(0, m_pixelNodeHeadTexture, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_pixelNodeBuffer);
 	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 2, m_pixelNodeCounter);
 
-	glBindImageTexture(3, m_reprojectionHistoryTexture->getHandle(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R16UI);
+	glBindImageTexture(3, m_reprojectionHistoryTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R16UI);
 
 	Engine::raytraceRenderer()->bindTexture(6);
 	//Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(3);
@@ -174,11 +174,11 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	//Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(5);
 	//Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(6);
 
-	LightProbe::getBRDFIntegrationMap()->bind(23);
-	m_screenShader->setUniform("BRDFIntegrationMap", 23);
+	LightProbe::getBRDFIntegrationMap()->makeResident(true);
+	m_screenShader->setUniform("BRDFIntegrationMap", LightProbe::getBRDFIntegrationMap()->getPackedTextureHandle());
 
-	m_pointLightIcon->bind(31);
-	m_screenShader->setUniform("pointLightIcon", 31);
+	m_pointLightIcon->makeResident(true);
+	m_screenShader->setUniform("pointLightIcon", m_pointLightIcon->getPackedTextureHandle());
 
 	this->drawFullscreenQuad();
 	ShaderProgram::use(NULL);
@@ -204,7 +204,7 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	m_depthTexture = m_prevDepthTexture;
 	m_prevDepthTexture = m_tempDepthTexture;
 	m_framebuffer->bind(m_width, m_height);
-	m_framebuffer->createDepthTextureAttachment(m_depthTexture->getHandle());
+	m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());
 }
 
 void ScreenRenderer::applyUniforms(ShaderProgram* shaderProgram) {
@@ -239,14 +239,14 @@ void ScreenRenderer::setResolution(uint32_t width, uint32_t height) {
 		static_cast<Texture2D*>(m_prevDepthTexture)->setSize(width, height);
 		static_cast<Texture2D*>(m_reprojectionHistoryTexture)->setSize(width, height, GL_RED_INTEGER);
 
-		m_framebuffer->createColourTextureAttachment(0, m_albedoTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_albedoTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(1, m_normalTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_normalTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(2, m_roughnessTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_roughnessTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(3, m_metalnessTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_metalnessTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(4, m_ambientOcclusionTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_ambientOcclusionTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(5, m_irradianceTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_irradianceTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(6, m_reflectionTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_reflectionTexture->getTarget()).target);
-		m_framebuffer->createDepthTextureAttachment(m_depthTexture->getHandle());//, Texture::getOpenGLTextureTarget(m_depthTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(0, m_albedoTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_albedoTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(1, m_normalTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_normalTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(2, m_roughnessTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_roughnessTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(3, m_metalnessTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_metalnessTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(4, m_ambientOcclusionTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_ambientOcclusionTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(5, m_irradianceTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_irradianceTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(6, m_reflectionTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_reflectionTexture->getTarget()).target);
+		m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_depthTexture->getTarget()).target);
 		m_framebuffer->checkStatus(true);
 		m_framebuffer->unbind();
 
@@ -272,8 +272,8 @@ void ScreenRenderer::setResolution(uint32_t width, uint32_t height) {
 		//
 		//static_cast<CubeMap*>(t_cubeDepthTexture)->setSize(128, 128, GL_DEPTH_COMPONENT);
 		//
-		//t_cubeDepthFramebuffer->createDepthTextureAttachment(t_cubeDepthTexture->getHandle());
-		////glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, t_cubeDepthTexture->getHandle(), 0);
+		//t_cubeDepthFramebuffer->createDepthTextureAttachment(t_cubeDepthTexture->getTextureName());
+		////glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, t_cubeDepthTexture->getTextureName(), 0);
 		//
 		//t_cubeDepthFramebuffer->checkStatus(true);
 		//t_cubeDepthFramebuffer->unbind();

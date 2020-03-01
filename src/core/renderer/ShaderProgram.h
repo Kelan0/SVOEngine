@@ -77,7 +77,17 @@ public:
 
 	void setUniform(std::string uniform, int i, int i1, int i2, int i3);
 
+	void setUniform(std::string uniform, unsigned int i);
+
+	void setUniform(std::string uniform, unsigned int i, unsigned int i1);
+
+	void setUniform(std::string uniform, unsigned int i, unsigned int i1, unsigned int i2);
+
+	void setUniform(std::string uniform, unsigned int i, unsigned int i1, unsigned int i2, unsigned int i3);
+
 	void setUniform(std::string uniform, bool b);
+
+	void setUniform(std::string uniform, fvec1 v);
 
 	void setUniform(std::string uniform, fvec2 v);
 
@@ -103,6 +113,8 @@ public:
 
 	void setUniform(std::string uniform, fmat4x4 m);
 
+	void setUniform(std::string uniform, dvec1 v);
+
 	void setUniform(std::string uniform, dvec2 v);
 
 	void setUniform(std::string uniform, dvec3 v);
@@ -126,6 +138,22 @@ public:
 	void setUniform(std::string uniform, dmat4x3 m);
 
 	void setUniform(std::string uniform, dmat4x4 m);
+
+	void setUniform(std::string uniform, ivec1 v);
+
+	void setUniform(std::string uniform, ivec2 v);
+
+	void setUniform(std::string uniform, ivec3 v);
+
+	void setUniform(std::string uniform, ivec4 v);
+
+	void setUniform(std::string uniform, uvec1 v);
+
+	void setUniform(std::string uniform, uvec2 v);
+
+	void setUniform(std::string uniform, uvec3 v);
+
+	void setUniform(std::string uniform, uvec4 v);
 
 	//    void setUniform(std::string uniform, Light* light);
 

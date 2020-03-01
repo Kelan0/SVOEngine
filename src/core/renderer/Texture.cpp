@@ -8,10 +8,11 @@ Texture::Texture(TextureTarget target, TextureFormat format, TextureFilter minFi
 	m_format(format),
 	m_minFilter(minFilter),
 	m_magFilter(magFilter),
-	m_handle(0),
+	m_textureName(0),
+	m_textureHandle(-1),
 	m_mipmapEnabled(false),
 	m_anisotropy(0.0) {
-	glGenTextures(1, &m_handle);
+	glGenTextures(1, &m_textureName);
 }
 
 Texture::Texture(uint32_t handle, TextureTarget target, TextureFormat format, TextureFilter minFilter, TextureFilter magFilter) :
@@ -19,14 +20,27 @@ Texture::Texture(uint32_t handle, TextureTarget target, TextureFormat format, Te
 	m_format(format),
 	m_minFilter(minFilter),
 	m_magFilter(magFilter),
-	m_handle(handle),
+	m_textureName(handle),
+	m_textureHandle(-1),
 	m_mipmapEnabled(false),
 	m_anisotropy(0.0) {
 }
 
 Texture::~Texture() {
-	glDeleteTextures(1, &m_handle);
-	m_handle = 0;
+	this->makeResident(false);
+	glDeleteTextures(1, &m_textureName);
+	m_textureName = 0;
+}
+
+void Texture::bind(uint32_t textureUnit) {
+	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+	glActiveTexture(GL_TEXTURE0 + textureUnit);
+	glBindTexture(target.target, m_textureName);
+}
+
+void Texture::unbind() {
+	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+	glBindTexture(target.target, 0);
 }
 
 bool Texture::setFilterMode(TextureFilter minFilter, TextureFilter magFilter, float anisotropy) {
@@ -91,8 +105,37 @@ TextureFilter Texture::getMagnificationFilterMode() const {
 	return m_magFilter;
 }
 
-uint32_t Texture::getHandle() const {
-	return m_handle;
+uint32_t Texture::getTextureName() const {
+	return m_textureName;
+}
+
+uint64_t Texture::getTextureHandle() {
+	if (m_textureHandle == uint64_t(-1)) {
+		m_textureHandle = glGetTextureHandleARB(m_textureName);
+	}
+	return m_textureHandle;
+}
+
+uvec2 Texture::getPackedTextureHandle() {
+	union {
+		uvec2 u2x32;
+		uint64_t u1x64;
+	} v;
+	// TODO: ensure little endian
+	v.u1x64 = this->getTextureHandle();
+	return v.u2x32;
+}
+
+void Texture::makeResident(bool resident) {
+	if (resident != m_resident) {
+		m_resident = resident;
+
+		if (resident) {
+			glMakeTextureHandleResidentARB(this->getTextureHandle());
+		} else {
+			glMakeTextureHandleNonResidentARB(this->getTextureHandle());
+		}
+	}
 }
 
 bool Texture::isMipmapEnabled() const {
@@ -396,16 +439,16 @@ void Texture2D::upload(void* data, uint32_t width, uint32_t height, uint32_t lef
 	this->unbind();
 }
 
-void Texture2D::bind(uint32_t textureUnit) {
-	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
-	glActiveTexture(GL_TEXTURE0 + textureUnit);
-	glBindTexture(target.target, m_handle);
-}
-
-void Texture2D::unbind() {
-	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
-	glBindTexture(target.target, 0);
-}
+//void Texture2D::bind(uint32_t textureUnit) {
+//	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+//	glActiveTexture(GL_TEXTURE0 + textureUnit);
+//	glBindTexture(target.target, m_textureName);
+//}
+//
+//void Texture2D::unbind() {
+//	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+//	glBindTexture(target.target, 0);
+//}
 
 uint64_t Texture2D::getMemorySize() const {
 	return Texture::getPixelSize(m_format) * m_width * m_height;
@@ -487,16 +530,16 @@ void Texture2DArray::upload(void* data, uint32_t depth, uint32_t width, uint32_t
 	this->unbind();
 }
 
-void Texture2DArray::bind(uint32_t textureUnit) {
-	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
-	glActiveTexture(GL_TEXTURE0 + textureUnit);
-	glBindTexture(target.target, m_handle);
-}
-
-void Texture2DArray::unbind() {
-	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
-	glBindTexture(target.target, 0);
-}
+//void Texture2DArray::bind(uint32_t textureUnit) {
+//	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+//	glActiveTexture(GL_TEXTURE0 + textureUnit);
+//	glBindTexture(target.target, m_textureName);
+//}
+//
+//void Texture2DArray::unbind() {
+//	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
+//	glBindTexture(target.target, 0);
+//}
 
 uint64_t Texture2DArray::getMemorySize() const {
 	return Texture::getPixelSize(m_format) * m_width * m_height * m_layers;

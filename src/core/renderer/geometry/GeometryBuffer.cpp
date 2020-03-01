@@ -54,14 +54,7 @@ void GeometryBuffer::initializeBuffers() {
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_triangleBufferSize * sizeof(Mesh::triangle), NULL, GL_STATIC_DRAW);
 	}
 
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, position));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, normal));
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, tangent));
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, texture));
+	Mesh::enableVertexAttributes();
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -89,7 +82,6 @@ void GeometryBuffer::allocate(uint64_t vertexCount, uint64_t triangleCount) {
 
 void GeometryBuffer::upload(const std::vector<Mesh::vertex>& vertices, const std::vector<Mesh::triangle>& triangles, GeometryRegion* geometryRegion, glm::dmat4 transformation) {
 	if (geometryRegion != NULL) {
-
 		uint64_t vertexOffset = m_vertices.size();
 		m_vertices.resize(vertexOffset + vertices.size());
 		std::memcpy(&m_vertices[vertexOffset], &vertices[0], sizeof(Mesh::vertex) * vertices.size());

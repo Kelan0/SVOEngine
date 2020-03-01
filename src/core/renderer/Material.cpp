@@ -130,6 +130,9 @@ Material::Material(MaterialConfiguration configuration) {
 }
 
 Material::~Material() {
+
+	this->makeResident(false);
+
 	//info("-DECREASED ENGINE MATERIALS TO %d\n", --Engine::materialCount);
 
 	//info("Deleting material\n");
@@ -217,6 +220,15 @@ void Material::bind(ShaderProgram* shaderProgram, std::string uniformName, int32
 void Material::unbind() const {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Material::makeResident(bool resident) {
+	if (m_albedoMap != NULL) m_albedoMap->makeResident(resident);
+	if (m_normalMap != NULL) m_normalMap->makeResident(resident);
+	if (m_roughnessMap != NULL) m_roughnessMap->makeResident(resident);
+	if (m_metalnessMap != NULL) m_metalnessMap->makeResident(resident);
+	if (m_ambientOcclusionMap != NULL) m_ambientOcclusionMap->makeResident(resident);
+	if (m_alphaMap != NULL) m_alphaMap->makeResident(resident);
 }
 
 Resource<Texture2D> Material::getAlbedoMap() const {

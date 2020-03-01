@@ -3,6 +3,7 @@
 #include "core/Engine.h"
 #include "core/util/FileUtils.h"
 #include "core/renderer/ShaderProgram.h"
+#include "core/renderer/Material.h"
 //#include "core/renderer/geometry/MeshLoader.h"
 //#include "core/renderer/geometry/TriAABBIntersectionTest.h"
 
@@ -20,8 +21,6 @@
 //
 //	ShaderProgram* m_tangentComputeShader;
 //};
-
-class Material;
 
 template <typename V, typename I, qualifier Q>
 class _Mesh {
@@ -53,7 +52,7 @@ public:
 					vec2 texture;
 					struct { value tx, ty; };
 				};
-				uint32_t material;
+				int32_t material;
 			};
 			uint8_t bytes[VERTEX_SIZE];
 		};
@@ -163,9 +162,9 @@ public:
 
 		index addVertex(vertex vertex);
 		
-		index addVertex(vec3 position, vec3 normal = vec3(0), vec3 tangent = vec3(0), vec2 texture = vec2(0), uint32_t material = -1);
+		index addVertex(vec3 position, vec3 normal = vec3(0), vec3 tangent = vec3(0), vec2 texture = vec2(0), int32_t material = -1);
 		
-		index addVertex(value px, value py, value pz, value nx = 0, value ny = 0, value nz = 0, value bx = 0, value by = 0, value bz = 0, value tx = 0, value ty = 0, uint32_t material = -1);
+		index addVertex(value px, value py, value pz, value nx = 0, value ny = 0, value nz = 0, value bx = 0, value by = 0, value bz = 0, value tx = 0, value ty = 0, int32_t material = -1);
 		
 		index addTriangle(triangle triangle);
 		
@@ -173,9 +172,9 @@ public:
 		
 		index addTriangle(vertex v0, vertex v1, vertex v2);
 		
-		index addTriangle(vec3 p0, vec3 p1, vec3 p2, vec3 n0 = vec3(0), vec3 n1 = vec3(0), vec3 n2 = vec3(0), vec3 b0 = vec3(0), vec3 b1 = vec3(0), vec3 b2 = vec3(0), vec2 t0 = vec2(0), vec2 t1 = vec2(0), vec2 t2 = vec2(0), uint32_t material = -1);
+		index addTriangle(vec3 p0, vec3 p1, vec3 p2, vec3 n0 = vec3(0), vec3 n1 = vec3(0), vec3 n2 = vec3(0), vec3 b0 = vec3(0), vec3 b1 = vec3(0), vec3 b2 = vec3(0), vec2 t0 = vec2(0), vec2 t1 = vec2(0), vec2 t2 = vec2(0), int32_t material = -1);
 		
-		index addTriangle(value px0, value py0, value pz0, value px1, value py1, value pz1, value px2, value py2, value pz2, value nx0 = 0, value ny0 = 0, value nz0 = 0, value nx1 = 0, value ny1 = 0, value nz1 = 0, value nx2 = 0, value ny2 = 0, value nz2 = 0,  value bx0 = 0, value by0 = 0, value bz0 = 0, value bx1 = 0, value by1 = 0, value bz1 = 0, value bx2 = 0, value by2 = 0, value bz2 = 0, value tx0 = 0, value ty0 = 0, value tx1 = 0, value ty1 = 0, value tx2 = 0, value ty2 = 0, uint32_t material = -1);
+		index addTriangle(value px0, value py0, value pz0, value px1, value py1, value pz1, value px2, value py2, value pz2, value nx0 = 0, value ny0 = 0, value nz0 = 0, value nx1 = 0, value ny1 = 0, value nz1 = 0, value nx2 = 0, value ny2 = 0, value nz2 = 0,  value bx0 = 0, value by0 = 0, value bz0 = 0, value bx1 = 0, value by1 = 0, value bz1 = 0, value bx2 = 0, value by2 = 0, value bz2 = 0, value tx0 = 0, value ty0 = 0, value tx1 = 0, value ty1 = 0, value tx2 = 0, value ty2 = 0, int32_t material = -1);
 
 		void removeVertex(index index); // This will invalidate indices returned from previous calls to addVertex
 
@@ -257,6 +256,8 @@ public:
 	void draw(uint32_t offset = 0, uint32_t count = 0);
 
 	static void addVertexInputs(ShaderProgram* shaderProgram);
+
+	static void enableVertexAttributes();
 private:
 	std::vector<triangle> m_triangles;
 	std::vector<vertex> m_vertices;
@@ -319,6 +320,7 @@ typename _Mesh<V, I, Q>::vertex _Mesh<V, I, Q>::vertex::operator*(const mat4& tr
 	v.normal = normalize(normalTransform * vec4(normal, 0));
 	v.tangent = normalize(normalTransform * vec4(tangent, 0));
 	v.texture = vec2(texture);
+	v.material = material;
 	return v;
 }
 
@@ -930,12 +932,12 @@ typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addVertex(vertex vertex)
 }
 
 template<typename V, typename I, qualifier Q>
-typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addVertex(vec3 position, vec3 normal, vec3 tangent, vec2 texture, uint32_t material) {
+typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addVertex(vec3 position, vec3 normal, vec3 tangent, vec2 texture, int32_t material) {
 	return this->addVertex(vertex { position, normal, tangent, texture, material });
 }
 
 template<typename V, typename I, qualifier Q>
-typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addVertex(value px, value py, value pz, value nx, value ny, value nz, value bx, value by, value bz, value tx, value ty, uint32_t material) {
+typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addVertex(value px, value py, value pz, value nx, value ny, value nz, value bx, value by, value bz, value tx, value ty, int32_t material) {
 	return this->addVertex(vec3(px, py, pz), vec3(nx, ny, nz), vec3(bx, by, bz), vec2(tx, ty), material);
 }
 
@@ -965,12 +967,12 @@ typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addTriangle(vertex v0, v
 }
 
 template<typename V, typename I, qualifier Q>
-typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addTriangle(vec3 p0, vec3 p1, vec3 p2, vec3 n0, vec3 n1, vec3 n2, vec3 b0, vec3 b1, vec3 b2, vec2 t0, vec2 t1, vec2 t2, uint32_t material) {
+typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addTriangle(vec3 p0, vec3 p1, vec3 p2, vec3 n0, vec3 n1, vec3 n2, vec3 b0, vec3 b1, vec3 b2, vec2 t0, vec2 t1, vec2 t2, int32_t material) {
 	return this->addTriangle(vertex { p0, n0, b0, t0 }, vertex { p1, n1, b1, t1 }, vertex { p2, n2, b2, t2 }, material);
 }
 
 template<typename V, typename I, qualifier Q>
-typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addTriangle(value px0, value py0, value pz0, value px1, value py1, value pz1, value px2, value py2, value pz2, value nx0, value ny0, value nz0, value nx1, value ny1, value nz1, value nx2, value ny2, value nz2, value bx0, value by0, value bz0, value bx1, value by1, value bz1, value bx2, value by2, value bz2, value tx0, value ty0, value tx1, value ty1, value tx2, value ty2, uint32_t material) {
+typename _Mesh<V, I, Q>::index _Mesh<V, I, Q>::Builder::addTriangle(value px0, value py0, value pz0, value px1, value py1, value pz1, value px2, value py2, value pz2, value nx0, value ny0, value nz0, value nx1, value ny1, value nz1, value nx2, value ny2, value nz2, value bx0, value by0, value bz0, value bx1, value by1, value bz1, value bx2, value by2, value bz2, value tx0, value ty0, value tx1, value ty1, value tx2, value ty2, int32_t material) {
 	return this->addTriangle(vec3(px0, py0, pz0), vec3(px1, py1, pz1), vec3(px2, py2, pz2), vec3(nx0, ny0, nz0), vec3(nx1, ny1, nz1), vec3(nx2, ny2, nz2), vec3(bx0, by0, bz0), vec3(bx1, by1, bz1), vec3(bx2, by2, bz2), vec2(tx0, ty0), vec2(tx1, ty1), vec2(tx2, ty2), material);
 }
 
@@ -1192,14 +1194,7 @@ void _Mesh<V, I, Q>::allocateGPU() {
 	glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
 	glBufferData(GL_ARRAY_BUFFER, m_allocatedVertices * sizeof(vertex), NULL, GL_STATIC_DRAW);
 	//glBufferStorage(GL_ARRAY_BUFFER, m_allocatedVertices * sizeof(vertex), NULL, 0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, position));
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, normal));
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, tangent));
-	glEnableVertexAttribArray(3);
-	glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, texture));
+	Mesh::enableVertexAttributes();
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_allocatedIndices * sizeof(index), NULL, GL_STATIC_DRAW);
@@ -1297,6 +1292,25 @@ inline void _Mesh<V, I, Q>::addVertexInputs(ShaderProgram* shaderProgram) {
 	shaderProgram->addAttribute(1, "vs_vertexNormal");
 	shaderProgram->addAttribute(2, "vs_vertexTangent");
 	shaderProgram->addAttribute(3, "vs_vertexTexture");
+	shaderProgram->addAttribute(4, "vs_vertexMaterial");
+}
+
+template<typename V, typename I, qualifier Q>
+inline void _Mesh<V, I, Q>::enableVertexAttributes() {
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, position));
+
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, normal));
+
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, tangent));
+
+	glEnableVertexAttribArray(3);
+	glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, texture));
+
+	glEnableVertexAttribArray(4);
+	glVertexAttribIPointer(4, 1, GL_INT, Mesh::VERTEX_SIZE, (void*)offsetof(Mesh::vertex, material));
 }
 
 typedef Mesh::vertex Vertex;

@@ -57,7 +57,7 @@ public:
 	virtual void upload(void* data[6], uint32_t width = 0, uint32_t height = 0);
 
 	virtual void bind(uint32_t textureUnit = 0) override;
-
+	
 	virtual void unbind() override;
 
 	virtual uint64_t getMemorySize() const;

@@ -19,6 +19,19 @@
 #define BVH_REFERENCE_BUFFER_BINDING 3
 #endif
 
+#ifndef MATERIAL_BUFFER_BINDING
+#define MATERIAL_BUFFER_BINDING 4
+#endif
+
+struct IntersectionInfo {
+    float dist;
+    uint triangleIndex;
+    vec3 barycentric;
+    Vertex v0;
+    Vertex v1;
+    Vertex v2;
+};
+
 // The flat array of nodes is depth-first - The left child immediately follows the current node. 
 // If the node is a leaf, dataOffset is the primitive pointer, else it is the right child pointer
 struct BVHNode {
@@ -41,6 +54,9 @@ layout (binding = BVH_NODE_BUFFER_BINDING, std430) buffer BVHNodeBuffer {
 layout (binding = BVH_REFERENCE_BUFFER_BINDING, std430) buffer BVHReferenceBuffer {
     uint bvhReferences[];
 };
+layout (binding = MATERIAL_BUFFER_BINDING, std430) buffer MaterialBuffer {
+    PackedMaterial materialBuffer[];
+};
 
 Vertex getVertex(uint vertexIndex) {
     RawVertex v = vertices[vertexIndex];
@@ -50,6 +66,7 @@ Vertex getVertex(uint vertexIndex) {
     vertex.normal = vec3(v.nx, v.ny, v.nz);
     vertex.tangent = vec3(v.bx, v.by, v.bz);
     vertex.texture = vec2(v.tx, v.ty);
+    vertex.material = v.m;
     return vertex;
 
     // Vertex vertex;
@@ -82,6 +99,25 @@ void getTriangleVertices(in uint triangleIndex, out Vertex v0, out Vertex v1, ou
     v0 = getVertex(triangle.i0);
     v1 = getVertex(triangle.i1);
     v2 = getVertex(triangle.i2);
+}
+
+Fragment getInterpolatedIntersectionFragment(IntersectionInfo intersection) {
+    vec3 position = mat3x3(intersection.v0.position, intersection.v1.position, intersection.v2.position) * intersection.barycentric;
+    vec3 normal = mat3x3(intersection.v0.normal, intersection.v1.normal, intersection.v2.normal) * intersection.barycentric;
+    vec3 tangent = mat3x3(intersection.v0.tangent, intersection.v1.tangent, intersection.v2.tangent) * intersection.barycentric;
+    vec2 texture = mat3x2(intersection.v0.texture, intersection.v1.texture, intersection.v2.texture) * intersection.barycentric;
+    uint materialIndex = intersection.v0.material;
+    float depth = intersection.dist;
+
+    bool hasTangent = dot(tangent, tangent) > 1e-3;
+    bool hasMaterial = materialIndex >= 0;
+    Material material;
+
+    if (hasMaterial) {
+        material = unpackMaterial(materialBuffer[materialIndex]);
+    }
+    
+    return calculateFragment(material, position, normal, tangent, texture, depth, hasTangent, hasMaterial);
 }
 
 #endif

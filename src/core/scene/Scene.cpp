@@ -4,6 +4,7 @@
 #include "core/renderer/LayeredDepthBuffer.h"
 #include "core/renderer/Lights.h"
 #include "core/renderer/VoxelGenerator.h"
+#include "core/renderer/MaterialManager.h"
 #include "core/renderer/ShadowMapRenderer.h"
 #include "core/renderer/geometry/GeometryBuffer.h"
 #include "core/scene/BoundingVolumeHierarchy.h"
@@ -351,6 +352,7 @@ SceneGraph::SceneGraph() {
 	m_camera = new Camera();
 	m_voxelizer = new VoxelGenerator(1024, 0.025);
 	m_staticGeometryBuffer = new GeometryBuffer();
+	m_materialManager = new MaterialManager();
 	m_controller = new FirstPersonController();
 	m_globalEnvironmentMap = NULL;
 	m_controllerEnabled = true;
@@ -383,6 +385,7 @@ SceneGraph::~SceneGraph() {
 	delete m_controller;
 	delete m_voxelizer;
 	delete m_staticGeometryBuffer;
+	delete m_materialManager;
 	delete m_defaultShader;
 }
 
@@ -395,6 +398,8 @@ void SceneGraph::render(double dt, double partialTicks) {
 		m_rebuildStaticSceneGeometry = false;
 		this->buildStaticSceneGeometry();
 	}
+
+	m_materialManager->render(dt, partialTicks);
 
 	TransformChain transform;
 
@@ -518,6 +523,10 @@ GeometryBuffer* SceneGraph::getStaticGeometryBuffer() {
 	return m_staticGeometryBuffer;
 }
 
+MaterialManager* SceneGraph::getMaterialManager() {
+	return m_materialManager;
+}
+
 FirstPersonController* SceneGraph::getController() {
 	return m_controller;
 }
@@ -591,6 +600,7 @@ void SceneGraph::applyUniforms(ShaderProgram* shaderProgram) {
 
 	m_camera->applyUniforms(shaderProgram);
 	m_voxelizer->applyUniforms(shaderProgram);
+	m_materialManager->applyUniforms(shaderProgram);
 	Engine::screenRenderer()->applyUniforms(shaderProgram);
 	// Engine::screenRenderer()->getLayeredDepthBuffer()->applyUniforms(shaderProgram);
 	shaderProgram->setUniform("screenSize", Engine::instance()->getWindowSize().x, Engine::instance()->getWindowSize().y);
@@ -598,6 +608,7 @@ void SceneGraph::applyUniforms(ShaderProgram* shaderProgram) {
 	shaderProgram->setUniform("lightingEnabled", Engine::instance()->isDebugRenderLightingEnabled());
 	shaderProgram->setUniform("imageBasedLightingEnabled", Engine::instance()->isImageBasedLightingEnabled());
 	shaderProgram->setUniform("transparentRenderPass", m_transparentRenderPass);
+	shaderProgram->setUniform("materialCount", (int) m_materialManager->getMaterialCount());
 
 	float r0 = rand() / float(RAND_MAX);
 	float r1 = rand() / float(RAND_MAX);

@@ -109,7 +109,7 @@ bool rayIntersectsTriangle(in Ray ray, in vec3 v0, in vec3 v1, in vec3 v2, bool 
     float t = f * dot(e2, q);
     if (t > _EPS && t < dist) {
         dist = t;
-        barycentric = vec3(u, v, 1.0 - u - v);
+        barycentric = vec3(1.0 - u - v, u, v);
         return true;
     } else {
         return false;
@@ -117,7 +117,7 @@ bool rayIntersectsTriangle(in Ray ray, in vec3 v0, in vec3 v1, in vec3 v2, bool 
     #undef _EPS
 }
 
-bool occlusionRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullBackface, inout float dist) {
+bool occlusionRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullBackface, inout IntersectionInfo intersection) {
     uint primitiveOffset = getPrimitiveOffset(node);
     uint primitiveCount = getPrimitiveCount(node);
 
@@ -129,8 +129,11 @@ bool occlusionRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cu
         uint ref = bvhReferences[i];
         getTriangleVertices(ref, v0, v1, v2);
 
-        vec3 barycentric;
-        if (rayIntersectsTriangle(ray, v0.position, v1.position, v2.position, cullBackface, dist, barycentric)) {
+        if (rayIntersectsTriangle(ray, v0.position, v1.position, v2.position, cullBackface, intersection.dist, intersection.barycentric)) {
+            intersection.triangleIndex = ref;
+            intersection.v0 = v0;
+            intersection.v1 = v1;
+            intersection.v2 = v2;
             return true;
         }
     }
@@ -138,7 +141,7 @@ bool occlusionRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cu
     return false;
 }
 
-bool sampleRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullBackface, inout float dist, out vec3 barycentric, out uint triangleIndex) {
+bool sampleRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullBackface, inout IntersectionInfo intersection) {
     uint primitiveOffset = getPrimitiveOffset(node);
     uint primitiveCount = getPrimitiveCount(node);
 
@@ -151,8 +154,11 @@ bool sampleRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullB
         uint ref = bvhReferences[i];
         getTriangleVertices(ref, v0, v1, v2);
 
-        if (rayIntersectsTriangle(ray, v0.position, v1.position, v2.position, cullBackface, dist, barycentric)) {
-            triangleIndex = ref;
+        if (rayIntersectsTriangle(ray, v0.position, v1.position, v2.position, cullBackface, intersection.dist, intersection.barycentric)) {
+            intersection.triangleIndex = ref;
+            intersection.v0 = v0;
+            intersection.v1 = v1;
+            intersection.v2 = v2;
             hitFound = true;
         }
     }
@@ -163,7 +169,7 @@ bool sampleRayIntersectsNodeTriangles(in Ray ray, in BVHNode node, in bool cullB
 #if STACKLESS_TRAVERSAL
 
 // Finds any ray intersection and immediately stops. Not guaranteed to be the closest, but is faster than a sample ray
-bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist) {
+bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout IntersectionInfo intersection) {
     uint lastNodeIndex, currentNodeIndex, parentNodeIndex;
     uint nearChild, farChild, tryChild;
     float nodeDist;
@@ -188,7 +194,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
         
         currentNode = bvhNodes[currentNodeIndex];
         if (isLeaf(currentNode)) {
-            if (occlusionRayIntersectsNodeTriangles(ray, currentNode, cullBackface, dist)) {
+            if (occlusionRayIntersectsNodeTriangles(ray, currentNode, cullBackface, intersection)) {
                 return true;
             }
 
@@ -206,7 +212,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
             continue;
         }
 
-        nodeDist = dist;
+        nodeDist = intersection.dist;
 
         parentNodeIndex = getParent(currentNode);
         tryChild = (lastNodeIndex == parentNodeIndex) ? nearChild : farChild;
@@ -227,7 +233,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
 }
 
 // Finds the absolute closest ray intersection
-bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, out vec3 barycentric, out uint triangleIndex) {
+bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout IntersectionInfo intersection) {
     uint lastNodeIndex, currentNodeIndex, parentNodeIndex;
     uint nearChild, farChild, tryChild;
     float nodeDist;
@@ -253,7 +259,7 @@ bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, 
         
         currentNode = bvhNodes[currentNodeIndex];
         if (isLeaf(currentNode)) {
-            if (sampleRayIntersectsNodeTriangles(ray, currentNode, cullBackface, dist, barycentric, triangleIndex)) {
+            if (sampleRayIntersectsNodeTriangles(ray, currentNode, cullBackface, intersection)) {
                 intersectionFound = true;
             }
 
@@ -271,7 +277,7 @@ bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, 
             continue;
         }
 
-        nodeDist = dist;
+        nodeDist = intersection.dist;
 
         parentNodeIndex = getParent(currentNode);
         tryChild = (lastNodeIndex == parentNodeIndex) ? nearChild : farChild;
@@ -316,7 +322,7 @@ bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, 
     //if (stackHead == STACK_DEPTH) continue;
 
 // Finds any ray intersection and immediately stops. Not guaranteed to be the closest, but is faster than a sample ray
-bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist) {
+bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout IntersectionInfo intersection) {
     uint stackHead = 0;
     uint indexStack[STACK_DEPTH];
     // BVHNode nodeStack[STACK_DEPTH];
@@ -335,7 +341,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
         POP_STACK(index, node);
 
         if (isLeaf(node)) {
-            if (occlusionRayIntersectsNodeTriangles(ray, node, cullBackface, dist)) {
+            if (occlusionRayIntersectsNodeTriangles(ray, node, cullBackface, intersection)) {
                 return true; // first intersection, immediately return
             }
             continue;
@@ -346,7 +352,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
         GET_NODE(getLeftChild(index, node), leftIndex, leftNode);
         GET_NODE(getRightChild(index, node), rightIndex, rightNode);
 
-        leftDist = rightDist = dist;
+        leftDist = rightDist = intersection.dist;
         leftHit = rayIntersectsNode(ray, leftNode, leftDist);
         rightHit = rayIntersectsNode(ray, rightNode, rightDist);
 
@@ -373,7 +379,7 @@ bool occlusionRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dis
 }
 
 // Finds the absolute closest ray intersection
-bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, out vec3 barycentric, out uint triangleIndex) {
+bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout IntersectionInfo intersection) {
     uint stackHead = 0;
     uint indexStack[STACK_DEPTH];
     // BVHNode nodeStack[STACK_DEPTH];
@@ -393,7 +399,7 @@ bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, 
         POP_STACK(index, node);
 
         if (isLeaf(node)) {
-            if (sampleRayIntersectsNodeTriangles(ray, node, cullBackface, dist, barycentric, triangleIndex)) {
+            if (sampleRayIntersectsNodeTriangles(ray, node, cullBackface, intersection)) {
                 hitFound = true;
             }
             continue;
@@ -404,7 +410,7 @@ bool sampleRayIntersectsBVH(in Ray ray, in bool cullBackface, inout float dist, 
         GET_NODE(getLeftChild(index, node), leftIndex, leftNode);
         GET_NODE(getRightChild(index, node), rightIndex, rightNode);
 
-        leftDist = rightDist = dist;
+        leftDist = rightDist = intersection.dist;
         leftHit = rayIntersectsNode(ray, leftNode, leftDist);
         rightHit = rayIntersectsNode(ray, rightNode, rightDist);
 

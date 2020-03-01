@@ -3,6 +3,7 @@
 #include "core/renderer/ShaderProgram.h"
 #include "core/renderer/EnvironmentMap.h"
 #include "core/renderer/ScreenRenderer.h"
+#include "core/renderer/MaterialManager.h"
 #include "core/renderer/geometry/GeometryBuffer.h"
 #include "core/scene/Scene.h"
 #include "core/Engine.h"
@@ -25,60 +26,61 @@ RaytraceRenderer::~RaytraceRenderer() {
 }
 
 void RaytraceRenderer::render(double dt, double partialTicks) {
-	constexpr int workgroupSizeX = 32;
-	constexpr int workgroupSizeY = 32;
-	ShaderProgram::use(m_raytraceShader);
-	Engine::scene()->applyUniforms(m_raytraceShader);
-	Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(0);
-	Engine::scene()->getStaticGeometryBuffer()->bindTriangleBuffer(1);
-	Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(2);
-	Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(3);
-	this->bindTexture(0);
-	int32_t index = 0;
-
-	LightProbe* skybox = Engine::scene()->getGlobalEnvironmentMap();
-
-	Engine::screenRenderer()->getAlbedoTexture()->bind(index);
-	m_raytraceShader->setUniform("albedoTexture", index++);
-
-	Engine::screenRenderer()->getNormalTexture()->bind(index);
-	m_raytraceShader->setUniform("normalTexture", index++);
-
-	Engine::screenRenderer()->getRoughnessTexture()->bind(index);
-	m_raytraceShader->setUniform("roughnessTexture", index++);
-
-	Engine::screenRenderer()->getMetalnessTexture()->bind(index);
-	m_raytraceShader->setUniform("metalnessTexture", index++);
-
-	Engine::screenRenderer()->getAmbientOcclusionTexture()->bind(index);
-	m_raytraceShader->setUniform("ambientOcclusionTexture", index++);
-
-	Engine::screenRenderer()->getIrradianceTexture()->bind(index);
-	m_raytraceShader->setUniform("irradianceTexture", index++);
-
-	Engine::screenRenderer()->getReflectionTexture()->bind(index);
-	m_raytraceShader->setUniform("reflectionTexture", index++);
-
-	Engine::screenRenderer()->getDepthTexture()->bind(index);
-	m_raytraceShader->setUniform("depthTexture", index++);
-
-	skybox->bindEnvironmentMap(index);
-	m_raytraceShader->setUniform("skyboxEnvironmentTexture", index++);
-
-	skybox->bindEnvironmentMap(index);
-	m_raytraceShader->setUniform("skyboxEnvironmentTexture", index++);
-
-	skybox->bindDiffuseIrradianceMap(index);
-	m_raytraceShader->setUniform("skyboxDiffuseIrradianceTexture", index++);
-
-	skybox->bindSpecularReflectionMap(index);
-	m_raytraceShader->setUniform("skyboxPrefilteredEnvironmentTexture", index++);
-
-	LightProbe::getBRDFIntegrationMap()->bind(index);
-	m_raytraceShader->setUniform("BRDFIntegrationMap", index++);
-
-	glDispatchCompute((m_renderWidth + workgroupSizeX) / workgroupSizeX, (m_renderHeight + workgroupSizeY) / workgroupSizeY, 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	//constexpr int workgroupSizeX = 32;
+	//constexpr int workgroupSizeY = 32;
+	//ShaderProgram::use(m_raytraceShader);
+	//Engine::scene()->applyUniforms(m_raytraceShader);
+	//Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(0);
+	//Engine::scene()->getStaticGeometryBuffer()->bindTriangleBuffer(1);
+	//Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(2);
+	//Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(3);
+	//Engine::scene()->getMaterialManager()->bindMaterialBuffer(4);
+	//this->bindTexture(0);
+	//int32_t index = 0;
+	//
+	//LightProbe* skybox = Engine::scene()->getGlobalEnvironmentMap();
+	//
+	//Engine::screenRenderer()->getAlbedoTexture()->bind(index);
+	//m_raytraceShader->setUniform("albedoTexture", index++);
+	//
+	//Engine::screenRenderer()->getNormalTexture()->bind(index);
+	//m_raytraceShader->setUniform("normalTexture", index++);
+	//
+	//Engine::screenRenderer()->getRoughnessTexture()->bind(index);
+	//m_raytraceShader->setUniform("roughnessTexture", index++);
+	//
+	//Engine::screenRenderer()->getMetalnessTexture()->bind(index);
+	//m_raytraceShader->setUniform("metalnessTexture", index++);
+	//
+	//Engine::screenRenderer()->getAmbientOcclusionTexture()->bind(index);
+	//m_raytraceShader->setUniform("ambientOcclusionTexture", index++);
+	//
+	//Engine::screenRenderer()->getIrradianceTexture()->bind(index);
+	//m_raytraceShader->setUniform("irradianceTexture", index++);
+	//
+	//Engine::screenRenderer()->getReflectionTexture()->bind(index);
+	//m_raytraceShader->setUniform("reflectionTexture", index++);
+	//
+	//Engine::screenRenderer()->getDepthTexture()->bind(index);
+	//m_raytraceShader->setUniform("depthTexture", index++);
+	//
+	//skybox->bindEnvironmentMap(index);
+	//m_raytraceShader->setUniform("skyboxEnvironmentTexture", index++);
+	//
+	//skybox->bindEnvironmentMap(index);
+	//m_raytraceShader->setUniform("skyboxEnvironmentTexture", index++);
+	//
+	//skybox->bindDiffuseIrradianceMap(index);
+	//m_raytraceShader->setUniform("skyboxDiffuseIrradianceTexture", index++);
+	//
+	//skybox->bindSpecularReflectionMap(index);
+	//m_raytraceShader->setUniform("skyboxPrefilteredEnvironmentTexture", index++);
+	//
+	//LightProbe::getBRDFIntegrationMap()->bind(index);
+	//m_raytraceShader->setUniform("BRDFIntegrationMap", index++);
+	//
+	//glDispatchCompute((m_renderWidth + workgroupSizeX) / workgroupSizeX, (m_renderHeight + workgroupSizeY) / workgroupSizeY, 1);
+	//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
 void RaytraceRenderer::applyUniforms(ShaderProgram* program) {
@@ -103,5 +105,5 @@ void RaytraceRenderer::setRenderResolution(uint32_t width, uint32_t height) {
 }
 
 void RaytraceRenderer::bindTexture(uint32_t unit) {
-	glBindImageTexture(unit, m_texture->getHandle(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glBindImageTexture(unit, m_texture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
 }

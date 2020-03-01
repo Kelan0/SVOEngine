@@ -79,6 +79,8 @@ public:
 
 	void unbind() const;
 
+	void makeResident(bool resident);
+
 	Resource<Texture2D> getAlbedoMap() const;
 
 	Resource<Texture2D> getNormalMap() const;

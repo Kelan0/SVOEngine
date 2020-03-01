@@ -39,9 +39,9 @@ void ShadowMap::setSize(uint32_t width, uint32_t height) {
 		//m_shadowFramebuffer->setDrawBuffer(GL_NONE);
 		//m_shadowFramebuffer->setReadBuffer(GL_NONE);
 
-		//m_shadowFramebuffer->createColourTextureAttachment(0, m_shadowTexture->getHandle(), 0);
+		//m_shadowFramebuffer->createColourTextureAttachment(0, m_shadowTexture->getTextureName(), 0);
 		//m_shadowFramebuffer->createDepthBufferAttachment(width, height, m_shadowFramebuffer->genRenderBuffers());
-		m_shadowFramebuffer->createDepthTextureAttachment(m_shadowTexture->getHandle());
+		m_shadowFramebuffer->createDepthTextureAttachment(m_shadowTexture->getTextureName());
 
 		m_shadowFramebuffer->checkStatus(true);
 		m_shadowFramebuffer->unbind();

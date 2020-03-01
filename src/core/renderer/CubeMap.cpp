@@ -160,7 +160,7 @@ void CubeMap::upload(void* data[6], uint32_t width, uint32_t height) {
 void CubeMap::bind(uint32_t textureUnit) {
 	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
 	glActiveTexture(GL_TEXTURE0 + textureUnit);
-	glBindTexture(target.target, m_handle);
+	glBindTexture(target.target, m_textureName);
 }
 
 void CubeMap::unbind() {
@@ -270,7 +270,7 @@ void CubeMap::uploadEquirectangular(Texture* texture, void* data, uint32_t width
 	ShaderProgram::use(s_equirectangularShader);
 	s_equirectangularShader->setUniform("faceSize", faceWidth, faceHeight);
 	glBindImageTexture(0, tempTextureHandle, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-	glBindImageTexture(1, texture->getHandle(), 0, GL_TRUE, 0, GL_WRITE_ONLY, format.internalFormat);
+	glBindImageTexture(1, texture->getTextureName(), 0, GL_TRUE, 0, GL_WRITE_ONLY, format.internalFormat);
 	glDispatchCompute((int)ceil(faceWidth / 16), (int)ceil(faceHeight / 16), 1);
 	ShaderProgram::use(NULL);
 
@@ -338,7 +338,7 @@ void CubeMapArray::upload(void* data[6], uint32_t layer, uint32_t width, uint32_
 void CubeMapArray::bind(uint32_t textureUnit) {
 	OpenGLTextureTarget target = Texture::getOpenGLTextureTarget(m_target);
 	glActiveTexture(GL_TEXTURE0 + textureUnit);
-	glBindTexture(target.target, m_handle);
+	glBindTexture(target.target, m_textureName);
 }
 
 void CubeMapArray::unbind() {

@@ -1,5 +1,6 @@
 #include "core/renderer/geometry/MeshLoader.h"
 #include "core/renderer/Material.h"
+#include "core/renderer/MaterialManager.h"
 #include "core/scene/Scene.h"
 #include "core/Engine.h"
 
@@ -299,6 +300,7 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 		return NULL;
 	}
 
+	uint32_t nextMaterialId = 0;
 
 	OBJ* obj = new OBJ();
 
@@ -503,10 +505,10 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 		vec3 e0 = v1.position - v0.position;
 		vec3 e1 = v2.position - v0.position;
 
-		double du0 = v1.texture.x - v0.texture.x;
-		double dv0 = v1.texture.y - v0.texture.y;
-		double du1 = v2.texture.x - v0.texture.x;
-		double dv1 = v2.texture.y - v0.texture.y;
+		double du0 = (double) v1.texture.x - v0.texture.x;
+		double dv0 = (double) v1.texture.y - v0.texture.y;
+		double du1 = (double) v2.texture.x - v0.texture.x;
+		double dv1 = (double) v2.texture.y - v0.texture.y;
 
 		double f = 1.0 / (du0 * dv1 - du1 * dv0);
 
@@ -715,12 +717,18 @@ std::map<std::string, std::vector<MeshLoader::OBJ::Object*>> MeshLoader::OBJ::cr
 	return materialObjectMap;
 }
 
-std::vector<Mesh::vertex> MeshLoader::OBJ::getVertices() const {
+const std::vector<Mesh::vertex>& MeshLoader::OBJ::getVertices() const {
 	return m_vertices;
 }
 
-std::vector<Mesh::triangle> MeshLoader::OBJ::getTriangles() const {
+const std::vector<Mesh::triangle>& MeshLoader::OBJ::getTriangles() const {
 	return m_triangles;
+}
+
+void MeshLoader::OBJ::initializeMaterialIndices() {
+	for (int i = 0; i < this->getObjectCount(); i++) {
+		this->getObject(i)->initializeMaterialIndices();
+	}
 }
 
 Mesh* MeshLoader::OBJ::createMesh(bool allocateGPU, bool deallocateCPU) {
@@ -858,6 +866,21 @@ MaterialConfiguration* MeshLoader::OBJ::Object::createMaterialConfiguration() {
 	}
 
 	return NULL;
+}
+
+void MeshLoader::OBJ::Object::initializeMaterialIndices() {
+	MaterialManager* materialManager = Engine::scene()->getMaterialManager();
+	MaterialConfiguration* materialConfiguration = this->createMaterialConfiguration();
+
+	uint32_t materialIndex = materialManager->loadNamedMaterial(m_materialName, *materialConfiguration);
+
+	for (uint32_t i = m_triangleBeginIndex; i < m_triangleEndIndex; ++i) {
+		m_obj->m_vertices[m_obj->m_triangles[i].indices[0]].material = materialIndex;
+		m_obj->m_vertices[m_obj->m_triangles[i].indices[1]].material = materialIndex;
+		m_obj->m_vertices[m_obj->m_triangles[i].indices[2]].material = materialIndex;
+	}
+
+	delete materialConfiguration;
 }
 
 MeshLoader::OBJ::Object::Object(OBJ* obj, std::string objectName, std::string groupName, std::string materialName):

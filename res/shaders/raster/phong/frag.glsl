@@ -11,6 +11,7 @@ in VertexData {
     vec2 vertexTexture;
     float projectedDepth;
     flat int hasTangent;
+    flat int materialIndex;
 } fs_in;
 
 
@@ -20,10 +21,14 @@ layout (binding = 1, std430) buffer NodeBuffer {
 };
 layout (binding = 2) uniform atomic_uint nodeCounter;
 
+layout (binding = 3, std430) buffer MaterialBuffer {
+    PackedMaterial materialBuffer[];
+};
+
 uniform int allocatedFragmentNodes;
 
-uniform bool hasMaterial;
-uniform Material material;
+// uniform bool hasMaterial;
+// uniform Material material;
 
 uniform bool lightingEnabled;
 uniform bool imageBasedLightingEnabled;
@@ -57,22 +62,29 @@ void insertNode(in Fragment fragment) {
 }
 
 void main() {
-    Fragment fragment = calculateFragment(material, fs_in.worldPosition, fs_in.worldNormal, fs_in.worldTangent, fs_in.vertexTexture, gl_FragCoord.z, fs_in.hasTangent != 0, hasMaterial);
-    fragment.roughness = 0.04; // temp
+    Material material;
+    bool hasMaterial = false;
 
-    // if (/*lightingEnabled && */imageBasedLightingEnabled && hasLightProbe) {
+    if (fs_in.materialIndex >= 0) {
+        material = unpackMaterial(materialBuffer[fs_in.materialIndex]);
+        hasMaterial = true;
+    }
+
+    Fragment fragment = calculateFragment(material, fs_in.worldPosition, fs_in.worldNormal, fs_in.worldTangent, fs_in.vertexTexture, gl_FragCoord.z, fs_in.hasTangent != 0, hasMaterial);
+
+    if (lightingEnabled && imageBasedLightingEnabled && hasLightProbe) {
         vec3 surfaceToCamera = cameraPosition - fs_in.worldPosition;
         vec3 viewReflectionDir = reflect(-surfaceToCamera, fragment.normal); 
         fragment.irradiance = texture(diffuseIrradianceTexture, fragment.normal).rgb;// * occ;
         fragment.reflection = textureLod(specularReflectionTexture, viewReflectionDir, fragment.roughness * maxReflectionMip).rgb;// * occ;
-    // }
-
-    const float eps = 1.0 / 255.0;
-    const bool transparent = fragment.transmission.r > eps || fragment.transmission.g > eps || fragment.transmission.b > eps;
-    
-    if (transparent) {
-        discard;
     }
+
+    // const float eps = 1.0 / 255.0;
+    // const bool transparent = fragment.transmission.r > eps || fragment.transmission.g > eps || fragment.transmission.b > eps;
+    
+    // if (transparent) {
+    //     discard;
+    // }
     
 //  if (transparent) {
         if (transparentRenderPass) {

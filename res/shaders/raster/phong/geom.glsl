@@ -8,6 +8,7 @@ in VertexData {
     vec2 vertexTexture;
     float projectedDepth;
     flat int hasTangent;
+    flat int materialIndex;
 } gs_in[];
 
 out VertexData {
@@ -17,6 +18,7 @@ out VertexData {
     vec2 vertexTexture;
     float projectedDepth;
     flat int hasTangent;
+    flat int materialIndex;
 } gs_out;
 
 void main() {
@@ -30,6 +32,7 @@ void main() {
             gs_out.vertexTexture = gs_in[i].vertexTexture;
             gs_out.projectedDepth = gs_in[i].projectedDepth;
             gs_out.hasTangent = gs_in[i].hasTangent;
+            gs_out.materialIndex = gs_in[i].materialIndex;
             gl_Position = gl_in[i].gl_Position;
             EmitVertex();
         }

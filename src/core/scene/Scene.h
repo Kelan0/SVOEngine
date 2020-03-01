@@ -22,6 +22,7 @@ class VoxelGenerator;
 class GeometryBuffer;
 class BoundingVolumeHierarchy;
 class MeshComponent;
+class MaterialManager;
 
 /**
  * Linked list of the built up chain of transformations while traversing the scene tree.
@@ -172,6 +173,8 @@ public:
 
 	GeometryBuffer* getStaticGeometryBuffer();
 
+	MaterialManager* getMaterialManager();
+
 	FirstPersonController* getController();
 
 	LightProbe* getGlobalEnvironmentMap();
@@ -207,6 +210,7 @@ private:
 	Camera* m_camera;
 	VoxelGenerator* m_voxelizer;
 	GeometryBuffer* m_staticGeometryBuffer;
+	MaterialManager* m_materialManager;
 	FirstPersonController* m_controller;
 	LightProbe* m_globalEnvironmentMap;
 

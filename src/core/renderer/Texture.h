@@ -171,9 +171,9 @@ public:
 	
 	//virtual void upload(void* data, uint32_t width, uint32_t height, uint32_t left, uint32_t top) = 0;
 
-	virtual void bind(uint32_t texture = 0) = 0;
+	virtual void bind(uint32_t texture = 0);
 
-	virtual void unbind() = 0;
+	virtual void unbind();
 
 	virtual uint64_t getMemorySize() const = 0;
 
@@ -189,7 +189,13 @@ public:
 
 	TextureFilter getMagnificationFilterMode() const;
 
-	uint32_t getHandle() const;
+	uint32_t getTextureName() const;
+
+	uint64_t getTextureHandle();
+
+	uvec2 getPackedTextureHandle();
+
+	void makeResident(bool resident);
 
 	bool isMipmapEnabled() const;
 
@@ -214,7 +220,9 @@ protected:
 	TextureFormat m_format;
 	TextureFilter m_minFilter;
 	TextureFilter m_magFilter;
-	uint32_t m_handle;
+	uint32_t m_textureName;
+	uint64_t m_textureHandle;
+	bool m_resident;
 	bool m_mipmapEnabled;
 	float m_anisotropy;
 };
@@ -228,10 +236,6 @@ public:
 	static bool load(std::string filePath, Texture2D** dstTexturePtr, bool verticalFlip = true);
 
 	virtual void upload(void* data, uint32_t width = 0, uint32_t height = 0, uint32_t left = 0, uint32_t top = 0);
-
-	virtual void bind(uint32_t textureUnit = 0) override;
-
-	virtual void unbind() override;
 
 	virtual uint64_t getMemorySize() const;
 
@@ -265,10 +269,6 @@ public:
 	~Texture2DArray();
 
 	virtual void upload(void* data, uint32_t depth, uint32_t width, uint32_t height, uint32_t layer, uint32_t left = 0, uint32_t top = 0);
-	
-	virtual void bind(uint32_t textureUnit = 0) override;
-	
-	virtual void unbind() override;
 
 	virtual uint64_t getMemorySize() const;
 

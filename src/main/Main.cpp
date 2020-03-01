@@ -287,7 +287,7 @@ int start_rasterizer(int argc, char** argv) {
 
 
 		SceneObject* bistroExteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));
-		bistroExteriorObject->addComponent("bistro_exterior_renderer", new MultiRenderComponent("models/bistro/Exterior/exterior", rasterShader));
+		bistroExteriorObject->addComponent("bistro_exterior_renderer", new RenderComponent("models/bistro/Exterior/exterior", rasterShader));
 		Engine::scene()->getRoot()->addChild("bistro_exterior_object", bistroExteriorObject);
 		
 		SceneObject* bistroInteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));

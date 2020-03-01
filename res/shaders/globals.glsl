@@ -76,6 +76,31 @@ struct Material {
     bool hasAlphaMap;
 };
 
+struct PackedMaterial {
+    uint albedoTextureLo;
+    uint albedoTextureHi;
+    
+    uint normalTextureLo;
+    uint normalTextureHi;
+    
+    uint roughnessTextureLo;
+    uint roughnessTextureHi;
+    
+    uint metalnessTextureLo;
+    uint metalnessTextureHi;
+    
+    uint ambientOcclusionTextureLo;
+    uint ambientOcclusionTextureHi;
+    
+    uint alphaTextureLo;
+    uint alphaTextureHi;
+
+    uint albedoRGBA8;
+    uint transmissionRGBA8;
+    uint roughnessR16_metalnessR16;
+    uint flags;
+};
+
 struct SurfacePoint {
     bool exists;
     bool transparent;
@@ -134,7 +159,7 @@ struct RawVertex {
    float nx, ny, nz;    // normal
    float bx, by, bz;    // tangent
    float tx, ty;        // texture
-   uint m;              // material index
+   int m;               // material index
 };
 
 struct Vertex {
@@ -142,7 +167,7 @@ struct Vertex {
     vec3 normal;
     vec3 tangent;
     vec2 texture;
-    uint material;
+    int material;
 };
 
 struct Triangle {
@@ -236,6 +261,43 @@ PackedFragment packFragment(Fragment fragment) {
     packedFragment.depth = fragment.depth;
 
     return packedFragment;
+}
+
+Material unpackMaterial(PackedMaterial packedMaterial) {
+    Material material;
+    
+    vec4 v;
+
+    v.xyzw = unpackUnorm4x8(packedMaterial.albedoRGBA8);
+    material.albedo = v.rgb;
+
+    v.xyzw = unpackUnorm4x8(packedMaterial.transmissionRGBA8);
+    material.transmission = v.rgb;
+
+    v.xy = unpackUnorm2x16(packedMaterial.roughnessR16_metalnessR16).xy;
+    material.roughness = v.x;
+    material.metalness = v.y;
+
+    material.albedoMap = sampler2D(uvec2(packedMaterial.albedoTextureLo, packedMaterial.albedoTextureHi));
+    material.hasAlbedoMap = bool(packedMaterial.flags & (1 << 0));
+
+    material.normalMap = sampler2D(uvec2(packedMaterial.normalTextureLo, packedMaterial.normalTextureHi));
+    material.hasNormalMap = bool(packedMaterial.flags & (1 << 1));
+
+    material.roughnessMap = sampler2D(uvec2(packedMaterial.roughnessTextureLo, packedMaterial.roughnessTextureHi));
+    material.hasRoughnessMap = bool(packedMaterial.flags & (1 << 2));
+    material.roughnessInverted = bool(packedMaterial.flags & (1 << 7));
+
+    material.metalnessMap = sampler2D(uvec2(packedMaterial.metalnessTextureLo, packedMaterial.metalnessTextureHi));
+    material.hasMetalnessMap = bool(packedMaterial.flags & (1 << 3));
+
+    material.ambientOcclusionMap = sampler2D(uvec2(packedMaterial.ambientOcclusionTextureLo, packedMaterial.ambientOcclusionTextureHi));
+    material.hasAmbientOcclusionMap = bool(packedMaterial.flags & (1 << 4));
+
+    material.alphaMap = sampler2D(uvec2(packedMaterial.alphaTextureLo, packedMaterial.alphaTextureHi));
+    material.hasAlphaMap = bool(packedMaterial.flags & (1 << 5));
+
+    return material;
 }
 
 vec3 depthToWorldPosition(float depth, vec2 coord, mat4 invViewProjectionMatrix) {

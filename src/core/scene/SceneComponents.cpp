@@ -4,13 +4,14 @@
 #include "core/renderer/geometry/GeometryBuffer.h"
 #include "core/renderer/geometry/MeshLoader.h"
 #include "core/renderer/geometry/Mesh.h"
-#include "core/renderer/ShaderProgram.h"
-#include "core/renderer/Texture.h"
 #include "core/renderer/CubeMap.h"
+#include "core/renderer/EnvironmentMap.h"
 #include "core/renderer/Lights.h"
 #include "core/renderer/Material.h"
-#include "core/renderer/EnvironmentMap.h"
+#include "core/renderer/MaterialManager.h"
+#include "core/renderer/ShaderProgram.h"
 #include "core/renderer/ShadowMapRenderer.h"
+#include "core/renderer/Texture.h"
 #include "core/util/FileUtils.h"
 #include "core/Engine.h"
 #include "core/InputHandler.h"
@@ -118,12 +119,14 @@ void RenderComponent::renderDirect(ShaderProgram* shaderProgram, TransformChain&
 			shaderProgram->setUniform("hasLightProbe", false);
 		}
 
-		if (m_material == NULL) {
-			shaderProgram->setUniform("hasMaterial", false);
-		} else {
-			m_material->bind(shaderProgram, "material");
-			shaderProgram->setUniform("hasMaterial", true);
-		}
+		//if (m_material == NULL) {
+		//	shaderProgram->setUniform("hasMaterial", false);
+		//} else {
+		//	m_material->bind(shaderProgram, "material");
+		//	shaderProgram->setUniform("hasMaterial", true);
+		//}
+
+		Engine::scene()->getMaterialManager()->bindMaterialBuffer(3);
 
 		Engine::scene()->getStaticGeometryBuffer()->draw(*m_geometryRegion);
 
@@ -148,7 +151,6 @@ void RenderComponent::allocateStaticSceneGeometry() {
 void RenderComponent::uploadStaticSceneGeometry(TransformChain& parentTransform) {
 	m_geometryRegion = new GeometryRegion();
 	Engine::scene()->getStaticGeometryBuffer()->upload(m_mesh->getVertices(), m_mesh->getTriangles(), m_geometryRegion, parentTransform.transformationMatrix);
-	info("%d %d - %d %d %d\n", m_mesh->getVertexCount(), m_mesh->getTriangleCount(), m_geometryRegion->vertexOffset, m_geometryRegion->triangleOffset, m_geometryRegion->triangleCount);
 }
 
 void RenderComponent::onAdded(SceneObject* object, std::string name) {
@@ -175,7 +177,12 @@ ShaderProgram* RenderComponent::getShaderProgram() {
 void RenderComponent::loadMesh(UnloadedMesh mesh) {
 	m_ownsMesh = true;
 	MeshLoader::OBJ* obj = MeshLoader::OBJ::load(std::string(mesh.modelFilePath));
-	m_mesh = obj->createMesh(false , false);
+
+	obj->initializeMaterialIndices();
+	m_mesh = obj->createMesh(false, false);
+
+	MaterialManager* materialManager = Engine::scene()->getMaterialManager();
+	
 	//m_triangleOffset = obj->upload();
 	//m_triangleCount = obj->getTriangleCount();
 
@@ -348,6 +355,8 @@ void MultiRenderComponent::loadMesh(UnloadedMesh mesh) {
 
 	// TODO: move this to MeshLoader class
 	if (obj != NULL) {
+		obj->initializeMaterialIndices();
+
 		std::map<std::string, std::vector<MeshLoader::OBJ::Object*>> materialObjectMap = obj->createMaterialObjectMap();
 		std::vector<Mesh::vertex> vertices;
 		std::vector<Mesh::triangle> triangles;

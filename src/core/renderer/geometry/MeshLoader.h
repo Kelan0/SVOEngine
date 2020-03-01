@@ -94,6 +94,9 @@ namespace MeshLoader {
 			Material* createMaterial();
 
 			MaterialConfiguration* createMaterialConfiguration();
+
+			void initializeMaterialIndices();
+
 		private:
 			Object(OBJ* obj, std::string objectName, std::string groupName, std::string materialName);
 
@@ -183,9 +186,11 @@ namespace MeshLoader {
 
 		std::map<std::string, std::vector<Object*>> createMaterialObjectMap() const;
 
-		std::vector<Mesh::vertex> getVertices() const;
+		const std::vector<Mesh::vertex>& getVertices() const;
 
-		std::vector<Mesh::triangle> getTriangles() const;
+		const std::vector<Mesh::triangle>& getTriangles() const;
+
+		void initializeMaterialIndices();
 
 		Mesh* createMesh(bool allocateGPU = true, bool deallocateCPU = true);
 

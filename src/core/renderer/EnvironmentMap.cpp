@@ -63,8 +63,8 @@ LightProbe* LightProbe::calculateDiffuseIrradianceMap() {
 	ShaderProgram::use(s_diffuseIrradianceConvolutionShader);
 	s_diffuseIrradianceConvolutionShader->setUniform("srcMapSize", envMapWidth, envMapHeight);
 	s_diffuseIrradianceConvolutionShader->setUniform("dstMapSize", irrMapWidth, irrMapHeight);
-	glBindImageTexture(0, m_environmentMap->getHandle(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RGBA32F);
-	glBindImageTexture(1, m_diffuseIrradianceMap->getHandle(), 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+	glBindImageTexture(0, m_environmentMap->getTextureName(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RGBA32F);
+	glBindImageTexture(1, m_diffuseIrradianceMap->getTextureName(), 0, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 	glDispatchCompute((int)ceil(irrMapWidth), (int)ceil(irrMapHeight), 6);
 	ShaderProgram::use(NULL);
 
@@ -120,8 +120,8 @@ LightProbe* LightProbe::calculateSpecularReflectionMap() {
 		s_specularRoughnessConvolutionShader->setUniform("srcMapSize", srcMapWidth, srcMapHeight);
 		s_specularRoughnessConvolutionShader->setUniform("dstMapSize", dstMapWidth, dstMapHeight);
 		s_specularRoughnessConvolutionShader->setUniform("roughness", roughness);
-		glBindImageTexture(0, m_environmentMap->getHandle(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RGBA32F);
-		glBindImageTexture(1, m_specularReflectionMap->getHandle(), i, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+		glBindImageTexture(0, m_environmentMap->getTextureName(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RGBA32F);
+		glBindImageTexture(1, m_specularReflectionMap->getTextureName(), i, GL_TRUE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 		glDispatchCompute((int)ceil(dstMapWidth), (int)ceil(dstMapWidth), 6);
 	}
 
@@ -181,7 +181,7 @@ Texture2D* LightProbe::getBRDFIntegrationMap() {
 
 		ShaderProgram::use(s_BRDFIntegrationShader);
 		s_BRDFIntegrationShader->setUniform("mapSize", w, h);
-		glBindImageTexture(0, s_BRDFIntegrationMap->getHandle(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG32F);
+		glBindImageTexture(0, s_BRDFIntegrationMap->getTextureName(), 0, GL_TRUE, 0, GL_READ_ONLY, GL_RG32F);
 		glDispatchCompute(w / 8, h / 8, 1);
 		ShaderProgram::use(NULL);
 	}

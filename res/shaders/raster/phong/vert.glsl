@@ -2,6 +2,7 @@ in vec3 vs_vertexPosition;
 in vec3 vs_vertexNormal;
 in vec3 vs_vertexTangent;
 in vec2 vs_vertexTexture;
+in int vs_vertexMaterial;
 
 uniform mat4 modelMatrix;
 uniform mat4 viewProjectionMatrix;
@@ -13,6 +14,7 @@ out VertexData {
     vec2 vertexTexture;
     float projectedDepth;
     flat int hasTangent;
+    flat int materialIndex;
 } vs_out;
 
 void main() {
@@ -29,6 +31,7 @@ void main() {
     vs_out.vertexTexture = vs_vertexTexture;
     vs_out.projectedDepth = projectedPosition.z / projectedPosition.w;
     vs_out.hasTangent = dot(vs_vertexTangent, vs_vertexTangent) > 1e-2 ? 1 : 0; // tangent is non-zero vector
+    vs_out.materialIndex = vs_vertexMaterial;
 
     gl_Position = projectedPosition;
 }

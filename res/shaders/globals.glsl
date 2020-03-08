@@ -27,6 +27,7 @@ uniform vec4 randomInterval = vec4(0.82971940, 0.92297589, 0.25741126, 0.3426382
 struct Fragment {
     vec3 albedo;
     vec3 transmission;
+    vec3 emission;
     vec3 normal;
     float roughness;
     float metalness;
@@ -53,6 +54,7 @@ struct PackedFragment {
 struct Material {
     vec3 albedo;
     vec3 transmission;
+    vec3 emission;
     float roughness;
     float metalness;
 
@@ -97,8 +99,12 @@ struct PackedMaterial {
 
     uint albedoRGBA8;
     uint transmissionRGBA8;
-    uint roughnessR16_metalnessR16;
+    uint emissionRG16;
+    uint emissionB16_roughnessR8_metalnessR8; // TODO: more roughness bits for less metalness bits? 10-bit roughness/6-bit metalness?
     uint flags;
+    uint padding0;
+    uint padding1;
+    uint padding2;
 };
 
 struct SurfacePoint {
@@ -114,6 +120,7 @@ struct SurfacePoint {
     // Material properties
     vec3 albedo;
     vec3 transmission;
+    vec3 emission;
     float metalness;
     float roughness;
     float ambientOcclusion;
@@ -240,6 +247,8 @@ Fragment unpackFragment(PackedFragment packedFragment) {
     data.xy = unpackUnorm2x16(packedFragment.reflectionGB);
     fragment.reflection.gb = data.xy;
 
+    fragment.emission = vec3(0.0);
+
     fragment.depth = packedFragment.depth;
 
     return fragment;
@@ -274,9 +283,13 @@ Material unpackMaterial(PackedMaterial packedMaterial) {
     v.xyzw = unpackUnorm4x8(packedMaterial.transmissionRGBA8);
     material.transmission = v.rgb;
 
-    v.xy = unpackUnorm2x16(packedMaterial.roughnessR16_metalnessR16).xy;
-    material.roughness = v.x;
-    material.metalness = v.y;
+    v.xy = unpackUnorm2x16(packedMaterial.emissionRG16);
+    v.zw = unpackUnorm2x16(packedMaterial.emissionB16_roughnessR8_metalnessR8);
+    material.emission = v.rgb * 256.0;
+
+    v.xyzw = unpackUnorm4x8(packedMaterial.emissionB16_roughnessR8_metalnessR8);
+    material.roughness = v.z;
+    material.metalness = v.w;
 
     material.albedoMap = sampler2D(uvec2(packedMaterial.albedoTextureLo, packedMaterial.albedoTextureHi));
     material.hasAlbedoMap = bool(packedMaterial.flags & (1 << 0));
@@ -355,6 +368,7 @@ SurfacePoint fragmentToSurfacePoint(Fragment fragment, vec2 coord, mat4 invViewP
 
     point.albedo = fragment.albedo;
     point.transmission = fragment.transmission;
+    point.emission = fragment.emission;
     point.metalness = fragment.metalness;
     point.roughness = fragment.roughness;
     point.irradiance = fragment.irradiance;
@@ -376,6 +390,7 @@ float getLinearDepth(float depth, float nearPlane, float farPlane) {
 vec3 calculateNormalMap(in vec2 texture, in sampler2D normalMap, in vec3 surfaceTangent, in vec3 surfaceNormal) {
     vec3 mappedNormal = texture2D(normalMap, texture).xyz * 2.0 - 1.0;
 
+    // TODO: handle BUMP map better
     bool grayscale = abs(mappedNormal.r - mappedNormal.g) < 1e-4 && abs(mappedNormal.r - mappedNormal.b) < 1e-4; // r g b all same value.
     if (grayscale) { // normal is grayscale bump map
         return surfaceNormal;
@@ -390,6 +405,8 @@ vec3 calculateNormalMap(in vec2 texture, in sampler2D normalMap, in vec3 surface
 Fragment calculateFragment(vec3 position, vec3 normal, vec3 tangent, vec2 texture, float depth, bool hasTangent) {
     Fragment fragment;
     fragment.albedo = vec3(1.0);
+    fragment.transmission = vec3(0.0);
+    fragment.emission = vec3(0.0);
     fragment.normal = normalize(normal);
     fragment.roughness = 1.0;
     fragment.metalness = 0.0;
@@ -409,6 +426,7 @@ Fragment calculateFragment(Material material, vec3 position, vec3 normal, vec3 t
     if (hasMaterial) {
         fragment.albedo = material.albedo;
         fragment.transmission = material.transmission;
+        fragment.emission = material.emission;
         float surfaceAlpha = 1.0;
 
         if (material.hasAlbedoMap) {
@@ -438,7 +456,7 @@ Fragment calculateFragment(Material material, vec3 position, vec3 normal, vec3 t
             if (material.hasAmbientOcclusionMap)
                 fragment.ambientOcclusion = texture2D(material.ambientOcclusionMap, texture).r;
 
-            if (material.roughnessInverted)
+            if (material.hasRoughnessMap && material.roughnessInverted)
                 fragment.roughness = 1.0 - fragment.roughness;
         //}
     }

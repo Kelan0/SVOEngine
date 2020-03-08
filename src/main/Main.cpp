@@ -281,18 +281,30 @@ int start_rasterizer(int argc, char** argv) {
 		Engine::scene()->setGlobalEnvironmentMap((new LightProbe(cubemapConfig))->calculateDiffuseIrradianceMap()->calculateSpecularReflectionMap());
 
 
+		//SceneObject* galleryObject = new SceneObject(Transformation(dvec3(0.0, 0.0, 0.0), dquat(), dvec3(1.0)));
+		//galleryObject->addComponent("gallery_renderer", new RenderComponent("models/gallery/gallery.obj", rasterShader));
+		//Engine::scene()->getRoot()->addChild("gallery_object", galleryObject);
+
+		//SceneObject* breakfastRoomObject = new SceneObject(Transformation(dvec3(0.0, 0.0, 0.0), dquat(), dvec3(1.0)));
+		//breakfastRoomObject->addComponent("breakfastroom_renderer", new RenderComponent("models/breakfast_room/breakfast_room", rasterShader));
+		//Engine::scene()->getRoot()->addChild("breakfastroom_object", breakfastRoomObject);
+
+		SceneObject* livingRoomObject = new SceneObject();
+		livingRoomObject->addComponent("livingroom_renderer", new RenderComponent("models/living_room/living_room", rasterShader));
+		Engine::scene()->getRoot()->addChild("livingroom_object", livingRoomObject);
+
 		//SceneObject* sanMiguelObject = new SceneObject();
 		//sanMiguelObject->addComponent("sanmiguel_renderer", new RenderComponent("models/san_miguel/san-miguel", rasterShader));
 		//Engine::scene()->getRoot()->addChild("sanmiguel_object", sanMiguelObject);
 
 
-		SceneObject* bistroExteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));
-		bistroExteriorObject->addComponent("bistro_exterior_renderer", new RenderComponent("models/bistro/Exterior/exterior", rasterShader));
-		Engine::scene()->getRoot()->addChild("bistro_exterior_object", bistroExteriorObject);
-		
-		SceneObject* bistroInteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));
-		bistroInteriorObject->addComponent("bistro_interior_renderer", new RenderComponent("models/bistro/Interior/interior", rasterShader));
-		Engine::scene()->getRoot()->addChild("bistro_interior_object", bistroInteriorObject);
+		//SceneObject* bistroExteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));
+		//bistroExteriorObject->addComponent("bistro_exterior_renderer", new RenderComponent("models/bistro/Exterior/exterior", rasterShader));
+		//Engine::scene()->getRoot()->addChild("bistro_exterior_object", bistroExteriorObject);
+		//
+		//SceneObject* bistroInteriorObject = new SceneObject(Transformation(dvec3(5.0, 0.0, 0.0), dquat(), dvec3(0.01)));
+		//bistroInteriorObject->addComponent("bistro_interior_renderer", new RenderComponent("models/bistro/Interior/interior", rasterShader));
+		//Engine::scene()->getRoot()->addChild("bistro_interior_object", bistroInteriorObject);
 
 		//Mesh* boxMesh = NULL;
 		//builder->clear();

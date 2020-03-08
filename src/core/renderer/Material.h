@@ -26,6 +26,7 @@ struct MaterialConfiguration {
 
 	dvec3 albedo = dvec3(1.0);
 	dvec3 transmission = dvec3(0.0);
+	dvec3 emission = dvec3(0.0);
 	double roughness = 1.0;
 	double metalness = 0.0;
 	double displacementScale = 0.025; // meters
@@ -97,6 +98,8 @@ public:
 
 	dvec3 getTransmission() const;
 
+	dvec3 getEmission() const;
+
 	double getRoughness() const;
 
 	double getMetalness() const;
@@ -129,6 +132,7 @@ private:
 	Resource<Texture2D> m_alphaMap;
 	dvec3 m_albedo = dvec3(1.0);
 	dvec3 m_transmission = dvec3(0.0);
+	dvec3 m_emission = dvec3(0.0);
 	double m_roughness = 1.0;
 	double m_metalness = 0.0;
 	bool m_roughnessInverted = false; // true if higher roughness values represent gloss/specular/shininess

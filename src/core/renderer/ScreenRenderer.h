@@ -57,6 +57,8 @@ public:
 
 	Texture* getAlbedoTexture() const;
 
+	Texture* getEmissionTexture() const;
+
 	Texture* getNormalTexture() const;
 
 	Texture* getRoughnessTexture() const;
@@ -87,6 +89,7 @@ public:
 protected:
 	Framebuffer* m_framebuffer;
 	Texture* m_albedoTexture;
+	Texture* m_emissionTexture;
 	Texture* m_normalTexture;
 	Texture* m_roughnessTexture;
 	Texture* m_metalnessTexture;

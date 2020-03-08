@@ -20,6 +20,7 @@ ScreenRenderer::ScreenRenderer(uint32_t width, uint32_t height):
 	m_height(0) {
 	// 4 + 4 + 2 + 2 + 2 + 6 + 6 + 4
 	m_albedoTexture = new Texture2D(width, height, TextureFormat::R8_G8_B8_A8_UNORM, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
+	m_emissionTexture = new Texture2D(width, height, TextureFormat::R16_G16_B16_FLOAT, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
 	m_normalTexture = new Texture2D(width, height, TextureFormat::R16_G16_FLOAT, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
 	m_roughnessTexture = new Texture2D(width, height, TextureFormat::R16_FLOAT, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
 	m_metalnessTexture = new Texture2D(width, height, TextureFormat::R16_FLOAT, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
@@ -57,6 +58,7 @@ ScreenRenderer::~ScreenRenderer() {
 	glDeleteVertexArrays(1, &m_fullscreenQuadVAO);
 	delete m_screenShader;
 	delete m_albedoTexture;
+	delete m_emissionTexture;
 	delete m_normalTexture;
 	delete m_roughnessTexture;
 	delete m_metalnessTexture;
@@ -134,6 +136,9 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	int32_t index = 0;
 	m_albedoTexture->makeResident(true);
 	m_screenShader->setUniform("albedoTexture", m_albedoTexture->getPackedTextureHandle());
+
+	m_emissionTexture->makeResident(true);
+	m_screenShader->setUniform("emissionTexture", m_emissionTexture->getPackedTextureHandle());
 	
 	m_normalTexture->makeResident(true);
 	m_screenShader->setUniform("normalTexture", m_normalTexture->getPackedTextureHandle());
@@ -229,6 +234,7 @@ void ScreenRenderer::setResolution(uint32_t width, uint32_t height) {
 		m_framebuffer->setDrawBuffers(7, drawBuffers);
 
 		static_cast<Texture2D*>(m_albedoTexture)->setSize(width, height, GL_RGB);
+		static_cast<Texture2D*>(m_emissionTexture)->setSize(width, height, GL_RGB);
 		static_cast<Texture2D*>(m_normalTexture)->setSize(width, height, GL_RGB);
 		static_cast<Texture2D*>(m_roughnessTexture)->setSize(width, height, GL_RGB);
 		static_cast<Texture2D*>(m_metalnessTexture)->setSize(width, height, GL_RGB);
@@ -239,14 +245,15 @@ void ScreenRenderer::setResolution(uint32_t width, uint32_t height) {
 		static_cast<Texture2D*>(m_prevDepthTexture)->setSize(width, height);
 		static_cast<Texture2D*>(m_reprojectionHistoryTexture)->setSize(width, height, GL_RED_INTEGER);
 
-		m_framebuffer->createColourTextureAttachment(0, m_albedoTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_albedoTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(1, m_normalTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_normalTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(2, m_roughnessTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_roughnessTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(3, m_metalnessTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_metalnessTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(4, m_ambientOcclusionTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_ambientOcclusionTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(5, m_irradianceTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_irradianceTexture->getTarget()).target);
-		m_framebuffer->createColourTextureAttachment(6, m_reflectionTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_reflectionTexture->getTarget()).target);
-		m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());//, Texture::getOpenGLTextureTarget(m_depthTexture->getTarget()).target);
+		m_framebuffer->createColourTextureAttachment(0, m_albedoTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(1, m_emissionTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(2, m_normalTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(3, m_roughnessTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(4, m_metalnessTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(5, m_ambientOcclusionTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(6, m_irradianceTexture->getTextureName());
+		m_framebuffer->createColourTextureAttachment(7, m_reflectionTexture->getTextureName());
+		m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());
 		m_framebuffer->checkStatus(true);
 		m_framebuffer->unbind();
 
@@ -325,6 +332,10 @@ Texture* ScreenRenderer::getAlbedoTexture() const {
 	return m_albedoTexture;
 }
 
+Texture* ScreenRenderer::getEmissionTexture() const {
+	return m_emissionTexture;
+}
+
 Texture* ScreenRenderer::getNormalTexture() const {
 	return m_normalTexture;
 }
@@ -363,16 +374,17 @@ Texture* ScreenRenderer::getReprojectionHistoryTexture() const {
 
 void ScreenRenderer::addFragmentOutputs(ShaderProgram* shaderProgram) {
 	shaderProgram->addDataLocation(0, "outAlbedo");
-	shaderProgram->addDataLocation(1, "outNormal");
-	shaderProgram->addDataLocation(2, "outRoughness");
-	shaderProgram->addDataLocation(3, "outMetalness");
-	shaderProgram->addDataLocation(4, "outAmbientOcclusion");
-	shaderProgram->addDataLocation(5, "outIrradiance");
-	shaderProgram->addDataLocation(6, "outReflection");
+	shaderProgram->addDataLocation(1, "outEmission");
+	shaderProgram->addDataLocation(2, "outNormal");
+	shaderProgram->addDataLocation(3, "outRoughness");
+	shaderProgram->addDataLocation(4, "outMetalness");
+	shaderProgram->addDataLocation(5, "outAmbientOcclusion");
+	shaderProgram->addDataLocation(6, "outIrradiance");
+	shaderProgram->addDataLocation(7, "outReflection");
 }
 
 uint32_t ScreenRenderer::getGBufferTextureCount() const {
-	return 7;
+	return 8;
 }
 
 //LayeredDepthBuffer* ScreenRenderer::getLayeredDepthBuffer() {

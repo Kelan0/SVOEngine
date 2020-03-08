@@ -11,7 +11,7 @@
 #endif
 
 #include "globals.glsl"
-#include "UE4BRDF.glsl"
+#include "lighting.glsl"
 
 const vec2 invAtan = vec2(0.15915494309, 0.31830988618);
 const vec3 cubeCornerVertices[24] = vec3[](

@@ -45,15 +45,15 @@ namespace MeshLoader {
 			vec3 specular = vec3(0.0F);                 // Ks
 			vec3 transmission = vec3(0.0F);             // Kt/Tf (1 - dissolve)
 
-			vec3 emissive = vec3(0.0F);                 // Ke -- PBR
+			vec3 emission = vec3(0.0F);                 // Ke -- PBR
 
 			float refractionIndex = 0.0F;               // Ni
 			float specularExponent = 0.0F;              // Ns
 
-			float roughness = 0.0F;                     // Pr -- PBR
-			float metalness = 0.0F;                      // Pm -- PBR
+			float roughness = 1.0F;                     // Pr -- PBR
+			float metalness = 0.0F;                     // Pm -- PBR
 			float clearcoatThickness = 0.0F;            // Pc -- PBR
-			float clearcoatRoughness = 0.0F;            // Pcr -- PBR
+			float clearcoatRoughness = 1.0F;            // Pcr -- PBR
 			float anisotropy = 0.0F;                    // aniso -- PBR
 			float anisotropicAngle = 0.0F;              // anisor -- PBR
 

@@ -6,6 +6,7 @@
 Material::Material(MaterialConfiguration configuration) {
 	m_albedo = configuration.albedo;
 	m_transmission = configuration.transmission;
+	m_emission = configuration.emission;
 	m_roughness = configuration.roughness;
 	m_metalness = configuration.metalness;
 
@@ -170,6 +171,7 @@ void Material::bind(ShaderProgram* shaderProgram, std::string uniformName, int32
 	// TODO: BINDLESS TEXTURES
 	shaderProgram->setUniform(uniformName + ".albedo", fvec3(m_albedo));
 	shaderProgram->setUniform(uniformName + ".transmission", fvec3(m_transmission));
+	shaderProgram->setUniform(uniformName + ".emission", fvec3(m_emission));
 	shaderProgram->setUniform(uniformName + ".roughness", float(m_roughness));
 	shaderProgram->setUniform(uniformName + ".metalness", float(m_metalness));
 	shaderProgram->setUniform(uniformName + ".roughnessInverted", m_roughnessInverted);
@@ -261,6 +263,10 @@ dvec3 Material::getAlbedo() const {
 
 dvec3 Material::getTransmission() const {
 	return m_transmission;
+}
+
+dvec3 Material::getEmission() const {
+	return m_emission;
 }
 
 double Material::getRoughness() const {

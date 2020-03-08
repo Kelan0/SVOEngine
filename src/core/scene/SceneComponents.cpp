@@ -17,6 +17,32 @@
 #include "core/InputHandler.h"
 //#include "core/scene/Scene.h"
 
+RaycastResult* raycastTransformedMesh(Mesh* mesh, TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) {
+	RaycastResult* result = NULL;
+
+	// Transform ray from world-space to model-space
+	dmat4 modelToWorld = parentTransform.transformationMatrix;
+	dmat4 worldToModel = inverse(modelToWorld);
+	dvec3 modelRayOrigin = dvec3(worldToModel * dvec4(rayOrigin, 1.0));
+	dvec3 modelRayDirection = dvec3(worldToModel * dvec4(rayDirection, 0.0));
+
+	double closestHitDistance = INFINITY;
+	dvec3 closestHitBarycentric;
+	Mesh::index closestHitTriangleIndex;
+	if (mesh->getRayIntersection(modelRayOrigin, modelRayDirection, closestHitDistance, closestHitBarycentric, closestHitTriangleIndex)) {
+		//dvec3 hitPoint = dvec3(modelToWorld * dvec4(modelRayOrigin + modelRayDirection * closestHitDistance, 1.0));
+
+		result = new RaycastResult();
+		result->distance = closestHitDistance;// distance(rayOrigin, hitPoint);
+		result->barycentric = closestHitBarycentric;
+		result->triangleIndex = closestHitTriangleIndex;
+		result->mesh = mesh;
+		result->transform = parentTransform;
+	}
+
+	return result;
+}
+
 RenderComponent::RenderComponent(Mesh* mesh, ShaderProgram* shaderProgram) {
 	m_mesh = mesh;
 	m_geometryRegion = NULL;
@@ -162,6 +188,10 @@ void RenderComponent::onRemoved(SceneObject* object, std::string name) {
 	object->removeComponent(name + "_mesh"); // find better way of doing this...
 }
 
+RaycastResult* RenderComponent::raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) {
+	return raycastTransformedMesh(m_mesh, parentTransform, rayOrigin, rayDirection);
+}
+
 Mesh* RenderComponent::getMesh() {
 	return m_mesh;
 }
@@ -181,7 +211,7 @@ void RenderComponent::loadMesh(UnloadedMesh mesh) {
 	obj->initializeMaterialIndices();
 	m_mesh = obj->createMesh(false, false);
 
-	MaterialManager* materialManager = Engine::scene()->getMaterialManager();
+	//MaterialManager* materialManager = Engine::scene()->getMaterialManager();
 	
 	//m_triangleOffset = obj->upload();
 	//m_triangleCount = obj->getTriangleCount();
@@ -637,79 +667,21 @@ uint32_t MeshComponent::getVertexCount() const {
 	return m_mesh->getVertexCount();
 }
 
-// https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
-bool rayTriangleIntersection(dvec3 rayOrigin, dvec3 rayDirection, dvec3 v0, dvec3 v1, dvec3 v2, double& intersectionDist) {
-	const double eps = 1e-5;
-	dvec3 e0, e1, h, s, q;
-	double a, f, u, v;
-
-	e0 = v1 - v0;
-	e1 = v2 - v0;
-
-	h = cross(rayDirection, e1);
-	a = dot(e0, h);
-	if (a > -eps && a < eps) return false;
-	f = 1.0 / a;
-	s = rayOrigin - v0;
-	u = f * dot(s, h);
-	if (u < 0.0 || u > 1.0) return false;
-	q = cross(s, e0);
-	v = f * dot(rayDirection, q);
-	if (v < 0.0 || u + v > 1.0) return false;
-
-	float t = f * dot(e1, q);
-	if (t > eps && t < 1.0 / eps) {
-		intersectionDist = t;
-		return true;
-	}
-	
-	return false;
+RaycastResult* MeshComponent::raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) {
+	return raycastTransformedMesh(m_mesh, parentTransform, rayOrigin, rayDirection);
 }
 
-RaycastResult* MeshComponent::raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) {
-	RaycastResult* result = NULL;
-
-	AxisAlignedBB enclosingTransformed = m_enclosingBounds.transformed(parentTransform.transformationMatrix);
-	if (enclosingTransformed.intersectsRay(rayOrigin, rayDirection)) {
-		for (int i = 0; i < m_sections.size(); i++) {
-			std::pair<uint32_t, uint32_t> section = m_sections[i];
-			AxisAlignedBB sectionTransformed = m_sectionBounds[i].transformed(parentTransform.transformationMatrix);
-
-			if (sectionTransformed.intersectsRay(rayOrigin, rayDirection)) {
-				uint32_t firstIndex = section.first;
-				uint32_t lastIndex = section.second;
-
-				for (int i = firstIndex; i < lastIndex; i++) {
-					Mesh::triangle tri = m_mesh->getTriangle(i);
-
-					Mesh::vertex v0 = m_mesh->getVertex(tri.indices[0]);
-					Mesh::vertex v1 = m_mesh->getVertex(tri.indices[1]);
-					Mesh::vertex v2 = m_mesh->getVertex(tri.indices[2]);
-
-					dvec4 p0 = parentTransform.transformationMatrix * dvec4(v0.position, 1.0);
-					dvec4 p1 = parentTransform.transformationMatrix * dvec4(v1.position, 1.0);
-					dvec4 p2 = parentTransform.transformationMatrix * dvec4(v2.position, 1.0);
-
-					double intersectionDistance;
-					if (rayTriangleIntersection(rayOrigin, rayDirection, p0, p1, p2, intersectionDistance)) {
-						bool flag = false;
-						if (result == NULL) {
-							result = new RaycastResult();
-							flag = true;
-						}
-
-						if (flag || intersectionDistance < result->distance) {
-							result->distance = intersectionDistance;
-							result->mesh = this;
-							result->transform = TransformChain(parentTransform);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return result;
+void MeshComponent::updateBounds() {
+	//m_enclosingBounds = AxisAlignedBB();
+	//
+	//for (Mesh::index i = 0; i < m_mesh->getTriangleCount(); i++) {
+	//	const Mesh::triangle& tri = m_mesh->getTriangle(i);
+	//	const Mesh::vertex& v0 = m_mesh->getVertex(tri.i0);
+	//	const Mesh::vertex& v1 = m_mesh->getVertex(tri.i1);
+	//	const Mesh::vertex& v2 = m_mesh->getVertex(tri.i2);
+	//
+	//	m_enclosingBounds = m_enclosingBounds.extend({ v0.position, v1.position, v2.position });
+	//}
 }
 
 void MeshComponent::loadMesh(Mesh* mesh) {

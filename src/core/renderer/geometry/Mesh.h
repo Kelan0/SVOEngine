@@ -255,6 +255,8 @@ public:
 
 	void draw(uint32_t offset = 0, uint32_t count = 0);
 
+	bool getRayIntersection(dvec3 rayOrigin, dvec3 rayDirection, double& closestHitDistance, dvec3& closestHitBarycentric, index& closestHitTriangleIndex, bool anyHit = false) const;
+
 	static void addVertexInputs(ShaderProgram* shaderProgram);
 
 	static void enableVertexAttributes();
@@ -1284,6 +1286,65 @@ void _Mesh<V, I, Q>::draw(uint32_t offset, uint32_t count) {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
+}
+
+// Moller Trumbore triangle intersection test
+inline bool rayTriangleIntersection(dvec3 rayOrigin, dvec3 rayDirection, dvec3 v0, dvec3 v1, dvec3 v2, double& distance, dvec3& barycentric) {
+	const double eps = 1e-6;
+	dvec3 e1, e2, h, s, q;
+	double a, f, u, v;
+	e1 = v1 - v0;
+	e2 = v2 - v0;
+	h = cross(rayDirection, e2);
+	a = dot(e1, h);
+	//if (cullBackface && a < 0.0)
+	//	return false;
+	if (abs(a) < eps)
+		return false;
+	f = 1.0 / a;
+	s = rayOrigin - v0;
+	u = f * dot(s, h);
+	if (u < 0.0 || u > 1.0)
+		return false;
+	q = cross(s, e1);
+	v = f * dot(rayDirection, q);
+	if (v < 0.0 || u + v > 1.0)
+		return false;
+	double t = f * dot(e2, q);
+	if (t > eps && t < distance) {
+		distance = t;
+		barycentric = vec3(1.0 - u - v, u, v);
+		return true;
+	} else {
+		return false;
+	}
+}
+
+template<typename V, typename I, qualifier Q>
+inline bool _Mesh<V, I, Q>::getRayIntersection(dvec3 rayOrigin, dvec3 rayDirection, double& closestHitDistance, dvec3& closestHitBarycentric, index& closestHitTriangleIndex, bool anyHit) const {
+	bool found = false;
+
+	for (index i = 0; i < m_triangles.size(); ++i) {
+		const Mesh::triangle& tri = m_triangles[i];
+
+		const Mesh::vertex& v0 = m_vertices[tri.indices[0]];
+		const Mesh::vertex& v1 = m_vertices[tri.indices[1]];
+		const Mesh::vertex& v2 = m_vertices[tri.indices[2]];
+
+		dvec4 p0 = dvec4(v0.position, 1.0);
+		dvec4 p1 = dvec4(v1.position, 1.0);
+		dvec4 p2 = dvec4(v2.position, 1.0);
+
+		double intersectionDistance = closestHitDistance;
+		dvec3 intersectionBarycentric;
+		if (rayTriangleIntersection(rayOrigin, rayDirection, p0, p1, p2, closestHitDistance, closestHitBarycentric)) {
+			closestHitTriangleIndex = i;
+			if (anyHit) return true;
+			found = true;
+		}
+	}
+
+	return found;
 }
 
 template<typename V, typename I, qualifier Q>

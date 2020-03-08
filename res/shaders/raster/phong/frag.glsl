@@ -42,6 +42,7 @@ uniform float aspectRatio;
 uniform bool transparentRenderPass;
 
 out vec4 outAlbedo;
+out vec3 outEmission;
 out vec2 outNormal;
 out float outRoughness;
 out float outMetalness;
@@ -92,7 +93,8 @@ void main() {
 //      }
     } else {
         outAlbedo = vec4(fragment.albedo, 1.0);
-        outNormal = encodeNormal(fragment.normal);
+        outEmission = fragment.emission;
+        outNormal = encodeNormal(fs_in.worldNormal);//fragment.normal);
         outRoughness = fragment.roughness;
         outMetalness = fragment.metalness;
         outAmbientOcclusion = fragment.ambientOcclusion;

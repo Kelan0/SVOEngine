@@ -79,7 +79,8 @@ vec3 sampleSpecularBRDF(vec2 Xi, vec3 N, vec3 V, float a2) {
     H.y = sinTheta * sinPhi;
     H.z = cosTheta;
     H = orientToNormal(H, N);
-    return normalize(2.0 * dot(V, H) * H - V); // reflect
+    return H;
+    // return normalize(2.0 * dot(V, H) * H - V); // reflect
 }
 
 vec3 sampleBRDF(vec3 wo, SurfacePoint surface, vec2 seed) {
@@ -146,4 +147,24 @@ vec3 evaluateBRDF(vec3 wo, vec3 wi, SurfacePoint surface, bool analyticLightSour
 
 vec3 evaluateDiffuseBRDF(vec3 wo, vec3 wi, SurfacePoint surface, bool analyticLightSource = false) {
     return surface.albedo * INV_PI;
+}
+
+vec3 evaluatePrefilteredBRDF(vec3 wo, vec3 wi, SurfacePoint surface, in sampler2D BRDFIntegrationMap, bool analyticLighting = false) {
+    const vec3 N = surface.normal;
+    const vec3 V = wo;
+    const vec3 L = wi;
+
+    float NDotV = dot(N, V);
+
+    if (NDotV <= 0.0) {
+        return vec3(0.0); // Zero radiance
+    }
+
+    vec3 specularColour = mix(DIELECTRIC_BASE_REFLECTIVITY, surface.albedo, surface.metalness);
+    vec3 prefilteredColour = surface.reflection;
+    vec2 BRDF = texture(BRDFIntegrationMap, vec2(NDotV, surface.roughness)).xy;
+    float scale = BRDF[0];
+    float bias = BRDF[1];
+
+    return prefilteredColour * (specularColour * scale + bias);
 }

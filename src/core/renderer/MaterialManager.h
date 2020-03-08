@@ -37,24 +37,38 @@ struct PackedMaterial {
 	};
 
 	union {
-		u8vec4 albedo;
-		uint32_t packedAlbedo;
+		u8vec4 albedoRGBA;
+		uint32_t packedAlbedoRGBA;
 	};
 
 	union {
-		u8vec4 transmission;
-		uint32_t packedTransmission;
+		u8vec4 transmissionRGBA;
+		uint32_t packedTransmissionRGBA;
 	};
 
 	union {
 		struct {
-			u16vec1 roughnessR16;
-			u16vec1 metalnessR16;
+			u16vec1 emissionR16;
+			u16vec1 emissionG16;
 		};
-		uint32_t roughnessR16_metalnessR16;
+		uint32_t packedEmissionRG;
+	};
+
+	union {
+		struct {
+			u16vec1 emissionB16;
+			struct {
+				u8vec1 roughnessR8;
+				u8vec1 metalnessR8;
+			};
+		};
+		uint32_t packedEmissionB_roughnessR_metalnessR;
 	};
 
 	uint32_t flags;
+	uint32_t padding0;
+	uint32_t padding1;
+	uint32_t padding2;
 };
 
 class MaterialManager {
@@ -63,11 +77,11 @@ public:
 
 	~MaterialManager();
 
-	uint32_t loadMaterial(MaterialConfiguration& materialConfiguration);
-
 	uint32_t loadNamedMaterial(std::string materialName, MaterialConfiguration& materialConfiguration);
 
-	Material* getMaterial(uint32_t index);
+	Material* getMaterial(uint32_t materialIndex);
+
+	Material* getMaterial(std::string materialName);
 
 	uint32_t getMaterialCount() const;
 
@@ -81,7 +95,7 @@ private:
 	void initializeMaterialBuffer();
 	
 	std::vector<Material*> m_materials;
-	std::map<std::string, uint32_t> m_materialNames;
+	std::map<std::string, uint32_t> m_namedMaterialIndexes;
 
 	uint32_t m_materialBuffer;
 	uint32_t m_materialCount;

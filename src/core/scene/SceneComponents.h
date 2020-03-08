@@ -80,6 +80,8 @@ public:
 
 	void onRemoved(SceneObject* object, std::string name) override;
 
+	RaycastResult* raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) override;
+
 	Mesh* getMesh();
 
 	Material* getMaterial();
@@ -191,6 +193,10 @@ public:
 
 	void render(TransformChain& parentTransform, double dt, double partialTicks) override;
 
+	RaycastResult* raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) override;
+
+	void updateBounds() override;
+
 	MeshComponent* transferMesh();
 
 	Mesh* getMesh() const;
@@ -206,8 +212,6 @@ public:
 	uint32_t getTriangleCount() const;
 
 	uint32_t getVertexCount() const;
-
-	RaycastResult* raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection);
 
 private:
 	void loadMesh(Mesh* mesh);

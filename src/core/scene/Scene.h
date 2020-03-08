@@ -35,7 +35,9 @@ struct TransformChain {
 
 struct RaycastResult {
 	double distance = INFINITY;
-	MeshComponent* mesh = NULL;
+	dvec3 barycentric;
+	Mesh::index triangleIndex;
+	Mesh* mesh = NULL;
 	TransformChain transform;
 	std::string name = "";
 };
@@ -61,6 +63,10 @@ public:
 	virtual void onAdded(SceneObject* object, std::string name) {};
 
 	virtual void onRemoved(SceneObject* object, std::string name) {};
+
+	virtual RaycastResult* raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) { return NULL; };
+
+	virtual void updateBounds() {};
 };
 
 class SceneObject {
@@ -70,7 +76,7 @@ public:
 
 	~SceneObject();
 
-	void updateBoundingTree();
+	void updateBoundingTree(TransformChain& parentTransform);
 
 	void preRender(TransformChain& parentTransform, double dt, double partialTicks);
 

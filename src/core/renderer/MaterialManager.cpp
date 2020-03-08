@@ -8,28 +8,30 @@ MaterialManager::~MaterialManager() {
 	glDeleteBuffers(1, &m_materialBuffer);
 }
 
-uint32_t MaterialManager::loadMaterial(MaterialConfiguration& materialConfiguration) {
-	Material* material = new Material(materialConfiguration);
-	uint32_t materialIndex = m_materials.size();
-	info("Initialized material index %d\n", materialIndex);
-
-	m_materials.push_back(material);
-	return materialIndex;
-}
-
 uint32_t MaterialManager::loadNamedMaterial(std::string materialName, MaterialConfiguration& materialConfiguration) {
-	uint32_t& materialIndex = m_materialNames[materialName];
+	uint32_t& materialIndex = m_namedMaterialIndexes[materialName];
 
 	if (materialIndex == 0) { // NULL
-		materialIndex = this->loadMaterial(materialConfiguration) + 1;
+		materialIndex = m_materials.size() + 1;
+
+		m_materials.push_back(new Material(materialConfiguration));
 	}
 
 	return materialIndex - 1;
 }
 
-Material* MaterialManager::getMaterial(uint32_t index) {
-	assert(index < m_materials.size());
-	return m_materials[index];
+Material* MaterialManager::getMaterial(uint32_t materialIndex) {
+	assert(materialIndex < m_materials.size());
+	return m_materials[materialIndex];
+}
+
+Material* MaterialManager::getMaterial(std::string materialName) {
+	auto it = m_namedMaterialIndexes.find(materialName);
+	if (it == m_namedMaterialIndexes.end()) {
+		return NULL;
+	}
+
+	return this->getMaterial(it->second);
 }
 
 uint32_t MaterialManager::getMaterialCount() const {
@@ -77,10 +79,13 @@ void MaterialManager::initializeMaterialBuffer() {
 			if (hasAmbientOcclusionTexture) packedMaterial.ambientOcclusionTextureHandle = material->getAmbientOcclusionMap()->getTextureHandle();
 			if (hasAlphaTexture) packedMaterial.alphaTextureHandle = material->getAlphaMap()->getTextureHandle();
 
-			packedMaterial.albedo = u8vec4(dvec4(material->getAlbedo(), 1.0) * 255.0);
-			packedMaterial.transmission = u8vec4(dvec4(material->getTransmission(), 1.0) * 255.0);
-			packedMaterial.roughnessR16 = u16vec1(material->getRoughness() * 65536.0);
-			packedMaterial.metalnessR16 = u16vec1(material->getMetalness() * 65536.0);
+			packedMaterial.albedoRGBA = u8vec4(clamp(dvec4(material->getAlbedo(), 1.0) * 255.0, 0.0, 255.0));
+			packedMaterial.transmissionRGBA = u8vec4(clamp(dvec4(material->getTransmission(), 1.0) * 255.0, 0.0, 255.0));
+			packedMaterial.emissionR16 = u16vec1(clamp(material->getEmission().r * 256.0, 0.0, 65535.0));
+			packedMaterial.emissionG16 = u16vec1(clamp(material->getEmission().g * 256.0, 0.0, 65535.0));
+			packedMaterial.emissionB16 = u16vec1(clamp(material->getEmission().b * 256.0, 0.0, 65535.0));
+			packedMaterial.roughnessR8 = u8vec1(clamp(material->getRoughness() * 255.0, 0.0, 255.0));
+			packedMaterial.metalnessR8 = u8vec1(clamp(material->getMetalness() * 255.0, 0.0, 255.0));
 
 			packedMaterial.flags = 0u;
 			packedMaterial.flags |= (hasAlbedoTexture ? 1 : 0) << 0;
@@ -94,8 +99,6 @@ void MaterialManager::initializeMaterialBuffer() {
 
 			packedMaterials[i] = packedMaterial;
 		}
-
-		info("Initializing %d materials\n", packedMaterials.size());
 
 		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_materialBuffer);
 		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(PackedMaterial) * packedMaterials.size(), &packedMaterials[0], GL_STATIC_DRAW);

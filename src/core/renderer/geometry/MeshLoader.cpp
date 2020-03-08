@@ -205,7 +205,7 @@ MeshLoader::OBJ::MaterialSet* MeshLoader::OBJ::readMTL(std::string file) {
 				float r = std::stof(comps[1]);
 				float g = std::stof(comps[2]);
 				float b = std::stof(comps[3]);
-				currentMaterial.emissive = vec3(r, g, b);
+				currentMaterial.emission = vec3(r, g, b);
 			} else if (line.rfind("Ni ", 0) == 0) { // reference of refraction
 				std::vector<std::string> comps = split(line, ' ', false);
 				currentMaterial.refractionIndex = std::stof(comps[1]);
@@ -235,43 +235,43 @@ MeshLoader::OBJ::MaterialSet* MeshLoader::OBJ::readMTL(std::string file) {
 				currentMaterial.anisotropicAngle = std::stof(comps[1]);
 			} else if (line.rfind("map_Ka ", 0) == 0) { // ambient texture file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.ambientMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.ambientMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Kd ", 0) == 0) { // diffuse texture file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.diffuseMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.diffuseMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Ks ", 0) == 0) { // specular texture file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.specularMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.specularMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Ns ", 0) == 0) { // specular exponent texture file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.specularExponentMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.specularExponentMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_bump ", 0) == 0 || line.rfind("map_Bump ", 0) == 0) { // bump (or normal?) map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.bumpMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.bumpMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_d ", 0) == 0) { // alpha (dissolve) map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.alphaMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.alphaMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("disp ", 0) == 0 || line.rfind("map_disp ", 0) == 0) { // displacement map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.displacementMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.displacementMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("refl ", 0) == 0 || line.rfind("map_refl ", 0) == 0) { // reflection map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.reflectionMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.reflectionMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Pr ", 0) == 0) { // PBR roughness map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.roughnessMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.roughnessMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Pm ", 0) == 0) { // PBR metalness map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.metalnessMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.metalnessMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Ps ", 0) == 0) { // PBR sheen map file path (1 - roughness)
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.sheenMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.sheenMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("map_Ke ", 0) == 0) { // PBR emissive map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.emissiveMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.emissiveMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			} else if (line.rfind("norm ", 0) == 0 || line.rfind("map_norm ", 0) == 0) { // PBR normal map file path
 				std::vector<std::string> comps = split(line, ' ', false);
-				currentMaterial.normalMapPath = comps[1]; //_strdup(comps[1].c_str());
+				currentMaterial.normalMapPath = comps[comps.size() - 1]; //_strdup(comps[comps.size() - 1].c_str());
 			}
 		} catch (std::exception e) {
 			warn("Error while parsing MTL line \"%s\" - %s\n", line.c_str(), e.what());
@@ -312,6 +312,7 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 	std::vector<Mesh::vertex> vertices;
 	std::vector<Mesh::triangle> triangles;
 	std::unordered_map<uvec3, uint32_t> mappedIndices;
+	std::unordered_map<std::string, MaterialSet*> loadedMaterialSets;
 
 	std::string currentObjectName = "default";
 	std::string currentGroupName = "default";
@@ -319,9 +320,13 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 	OBJ::Object* currentObject = new Object(obj, currentObjectName, currentGroupName, currentMaterialName);
 	std::vector<Object*> objects;
 
+	// TODO: can this be efficiently parallellized ?
+
+	uint32_t lineNumber = 0;
 	std::string line;
 	while (std::getline(stream, line)) {
 		line = trim(line);
+		lineNumber++;
 
 		if (line.empty()) {
 			continue;
@@ -349,8 +354,9 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 				std::vector<std::string> faceComps = split(line, ' ');
 
 				uint32_t faceSize = faceComps.size() - 1;
-				if (faceSize != 3 && faceSize != 4) {
-					warn("Unsupported face index configuration. Only triangle or quad faces are supported\n");
+
+				if (faceSize < 3) {
+					warn("Degenerate face - %d vertices\n");
 					continue;
 				}
 
@@ -383,20 +389,35 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 					mappedIndices[indices[i].k] = OBJ::npos; // initialize to invalid reference
 				}
 
-				if (faceSize >= 3) {
+				// triangle fan
+				for (int i = 1; i < faceSize - 1; i++) {
 					OBJ::face face;
 					face.v0 = indices[0];
-					face.v1 = indices[1];
-					face.v2 = indices[2];
+					face.v1 = indices[i];
+					face.v2 = indices[i + 1];
 					faces.push_back(face);
-
-					if (faceSize >= 4) {
-						face.v0 = indices[0];
-						face.v1 = indices[2];
-						face.v2 = indices[3];
-						faces.push_back(face);
-					}
 				}
+
+				//if (faceSize >= 3) {
+				//	OBJ::face face;
+				//	face.v0 = indices[0];
+				//	face.v1 = indices[1];
+				//	face.v2 = indices[2];
+				//	faces.push_back(face);
+				//
+				//	if (faceSize >= 4) {
+				//		face.v0 = indices[0];
+				//		face.v1 = indices[2];
+				//		face.v2 = indices[3];
+				//		faces.push_back(face);
+				//
+				//		if (faceSize >= 5) {
+				//			info("[%d] INVALID FACE - %d VERTICES\n", lineNumber, faceSize);
+				//		}
+				//	}
+				//}
+
+				delete[] indices;
 			} else if (line.rfind("o ", 0) == 0) { // line is an mesh definition
 				currentObjectName = line.substr(2);
 
@@ -440,6 +461,12 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 				std::vector<std::string> materialPaths = split(line, ' ');
 
 				for (int i = 1; i < materialPaths.size(); i++) {
+					auto it = loadedMaterialSets.find(materialPaths[i]);
+
+					if (it != loadedMaterialSets.end()) { // already loaded, don't re-load it.
+						continue;
+					}
+
 					std::string mtlPath = mtlDir + "/" + materialPaths[i];
 					MaterialSet* mtl = OBJ::readMTL(mtlPath);
 					if (mtl == NULL) {
@@ -447,6 +474,7 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 						continue;
 					}
 					obj->m_materialSets.push_back(mtl);
+					loadedMaterialSets[materialPaths[i]] = mtl;
 				}
 			}
 		} catch (std::exception e) {
@@ -474,7 +502,7 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 	uint64_t t0 = Engine::instance()->getCurrentTime();
 	currentObject->m_triangleBeginIndex = triangles.size();
 
-	size_t startVertexCount = vertices.size();
+	//size_t startVertexCount = vertices.size();
 
 	for (int i = 0; i < faces.size(); i++) {
 		OBJ::face& face = faces[i];
@@ -513,7 +541,6 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 		double f = 1.0 / (du0 * dv1 - du1 * dv0);
 
 		vec3 tangent;
-
 		tangent.x = f * (dv1 * e0.x - dv0 * e1.x);
 		tangent.y = f * (dv1 * e0.y - dv0 * e1.y);
 		tangent.z = f * (dv1 * e0.z - dv0 * e1.z);
@@ -525,12 +552,16 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 		triangles.push_back(tri);
 	}
 
+	currentObject->m_triangleEndIndex = triangles.size();
+
 	// normalize tangents of all added vertices
-	for (int i = startVertexCount; i < vertices.size(); i++) {
-		vertices[i].tangent = normalize(vertices[i].tangent);
+	for (int i = currentObject->m_triangleBeginIndex; i < currentObject->m_triangleEndIndex; i++) {
+		Mesh::triangle& tri = triangles[i];
+		vertices[tri.i0].tangent = normalize(vertices[tri.i0].tangent);
+		vertices[tri.i1].tangent = normalize(vertices[tri.i1].tangent);
+		vertices[tri.i2].tangent = normalize(vertices[tri.i2].tangent);
 	}
 
-	currentObject->m_triangleEndIndex = triangles.size();
 	uint64_t t1 = Engine::instance()->getCurrentTime();
 	info("- Took %f msec\n", (t1 - t0) / 1000000.0);
 }
@@ -826,7 +857,7 @@ void MeshLoader::OBJ::Object::fillMeshBuffers(std::vector<Mesh::vertex>& vertice
 	uint32_t minIndex = -1; // underflow to max
 	uint32_t maxIndex = 0;
 
-	for (int i = m_triangleBeginIndex; i < m_triangleEndIndex; i++) {
+	for (int i = m_triangleBeginIndex; i <= m_triangleEndIndex; i++) {
 		Mesh::triangle& tri = m_obj->m_triangles[i];
 		for (int j = 0; j < 3; j++) {
 			minIndex = std::min(minIndex, tri.indices[j]);
@@ -841,7 +872,7 @@ void MeshLoader::OBJ::Object::fillMeshBuffers(std::vector<Mesh::vertex>& vertice
 
 	vertices.insert(vertices.end(), &m_obj->m_vertices[minIndex], &m_obj->m_vertices[maxIndex]);
 
-	for (int i = m_triangleBeginIndex; i < m_triangleEndIndex; i++) {
+	for (int i = m_triangleBeginIndex; i <= m_triangleEndIndex; i++) {
 		Mesh::triangle tri = Mesh::triangle(m_obj->m_triangles[i]); // copy
 		tri.i0 = (tri.i0 - minIndex) + baseVertex;
 		tri.i1 = (tri.i1 - minIndex) + baseVertex;
@@ -972,7 +1003,7 @@ bool MeshLoader::OBJ::MaterialSet::writeBinaryData(std::ofstream& stream) {
 			stream.write(reinterpret_cast<char*>(&mat.specular), sizeof(vec3));
 			stream.write(reinterpret_cast<char*>(&mat.transmission), sizeof(vec3));
 
-			stream.write(reinterpret_cast<char*>(&mat.emissive), sizeof(vec3));
+			stream.write(reinterpret_cast<char*>(&mat.emission), sizeof(vec3));
 
 			stream.write(reinterpret_cast<char*>(&mat.refractionIndex), sizeof(float));
 			stream.write(reinterpret_cast<char*>(&mat.specularExponent), sizeof(float));
@@ -1028,7 +1059,7 @@ bool MeshLoader::OBJ::MaterialSet::readBinaryData(std::ifstream& stream) {
 			stream.read(reinterpret_cast<char*>(&mat.specular), sizeof(vec3));
 			stream.read(reinterpret_cast<char*>(&mat.transmission), sizeof(vec3));
 
-			stream.read(reinterpret_cast<char*>(&mat.emissive), sizeof(vec3));
+			stream.read(reinterpret_cast<char*>(&mat.emission), sizeof(vec3));
 
 			stream.read(reinterpret_cast<char*>(&mat.refractionIndex), sizeof(float));
 			stream.read(reinterpret_cast<char*>(&mat.specularExponent), sizeof(float));
@@ -1120,6 +1151,7 @@ MaterialConfiguration* MeshLoader::OBJ::MaterialSet::createMaterialConfiguration
 	MaterialConfiguration* configuration = new MaterialConfiguration();
 	configuration->albedo = material.diffuse;
 	configuration->transmission = material.transmission;
+	configuration->emission = material.emission;
 
 	if (!material.diffuseMapPath.empty()) configuration->albedoMapPath = mtlDir + material.diffuseMapPath;
 

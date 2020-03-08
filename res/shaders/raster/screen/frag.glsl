@@ -45,6 +45,7 @@ uniform bool transparentRenderPass;
 uniform int renderGBufferMode;
 uniform vec2 screenResolution;
 uniform uvec2 albedoTexture;
+uniform uvec2 emissionTexture;
 uniform uvec2 normalTexture;
 uniform uvec2 roughnessTexture;
 uniform uvec2 metalnessTexture;
@@ -82,23 +83,28 @@ uniform int spotLightCount;
 
 out vec4 outColour;
 
+SurfacePoint readOpaqueSurfacePoint(vec2 coord) {
+    Fragment fragment;
+    fragment.depth = texture(sampler2D(depthTexture), coord).x;
+    fragment.albedo = texture(sampler2D(albedoTexture), coord).rgb;
+    fragment.emission = texture(sampler2D(emissionTexture), coord).rgb;
+    fragment.normal = decodeNormal(texture(sampler2D(normalTexture), coord).rg);
+    fragment.roughness = texture(sampler2D(roughnessTexture), coord).r;
+    fragment.metalness = texture(sampler2D(metalnessTexture), coord).r;
+    fragment.ambientOcclusion = texture(sampler2D(ambientOcclusionTexture), coord).r;
+    fragment.irradiance = texture(sampler2D(irradianceTexture), coord).rgb;
+    fragment.reflection = texture(sampler2D(reflectionTexture), coord).rgb;
+    fragment.transmission = vec3(0.0);
+
+    return fragmentToSurfacePoint(fragment, coord, invViewProjectionMatrix);
+}
+
 int readSurfacePoints(vec2 coord, inout SurfacePoint points[MAX_TRANSPARENT_FRAGMENTS]) {
     float opaqueDepth = texture(sampler2D(depthTexture), coord).x;
     int count = 0;
 
     if (opaqueDepth > 0.0 && opaqueDepth < 1.0) {
-        Fragment opaqueFragment;
-        opaqueFragment.depth = opaqueDepth;
-        opaqueFragment.albedo = texture(sampler2D(albedoTexture), coord).rgb;
-        opaqueFragment.normal = decodeNormal(texture(sampler2D(normalTexture), coord).rg);
-        opaqueFragment.roughness = texture(sampler2D(roughnessTexture), coord).r;
-        opaqueFragment.metalness = texture(sampler2D(metalnessTexture), coord).r;
-        opaqueFragment.ambientOcclusion = texture(sampler2D(ambientOcclusionTexture), coord).r;
-        opaqueFragment.irradiance = texture(sampler2D(irradianceTexture), coord).rgb;
-        opaqueFragment.reflection = texture(sampler2D(reflectionTexture), coord).rgb;
-        opaqueFragment.transmission = vec3(0.0);
-
-        points[0] = fragmentToSurfacePoint(opaqueFragment, coord, invViewProjectionMatrix);
+        points[0] = readOpaqueSurfacePoint(coord);
         count = 1;
     } else {
         opaqueDepth = 1.0;
@@ -219,53 +225,28 @@ vec4 renderEquirectangularCubemap(in samplerCube cubeTexture, ivec2 pixel, ivec2
 
 void main() {
     ivec2 pixel = ivec2(fs_vertexTexture * screenSize);
-    SurfacePoint surfaces[MAX_TRANSPARENT_FRAGMENTS];
-    int count = readSurfacePoints(fs_vertexTexture, surfaces);
 
+    SurfacePoint surface = readOpaqueSurfacePoint(fs_vertexTexture);
+        
     vec3 pixelDirection = createRay(fs_vertexTexture, cameraPosition, cameraRays).direction;
     vec3 finalColour = texture(samplerCube(skyboxEnvironmentTexture), pixelDirection.xyz).rgb;
 
-    // vec4 raytracedFrameColour = imageLoad(raytracedFrame, pixel).rgba;
+    vec4 raytracedFrameColour = imageLoad(raytracedFrame, ivec2(fs_vertexTexture * screenSize * 0.5)).rgba;
 
-    // if (raytracedFrameColour.a > 0.0) {
-    //     finalColour = raytracedFrameColour.rgb / raytracedFrameColour.a;
-    // }
-
-    for (int i = count - 1; i >= 0; --i) { // blend from far to near
-        vec3 surfaceColour = vec3(0.0);
-        // surfaces[i].ambientOcclusion *= raytracedFrameColour.r;
-        calculateLighting(surfaceColour, surfaces[i], pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
-        finalColour = mix(surfaceColour, finalColour, surfaces[i].transmission);
+    if (raytracedFrameColour.a > 0.0) {
+        finalColour = raytracedFrameColour.rgb / raytracedFrameColour.a;
     }
 
-    //calculateLightBillboards(pixel, surfaces[0].depth, finalColour);
-    
-    // vec4 reprojectedPosition = prevViewProjectionMatrix * vec4(surfaces[0].position, 1.0);
-    // reprojectedPosition.xyz = reprojectedPosition.xyz / reprojectedPosition.w;
-    // reprojectedPosition.xyz = reprojectedPosition.xyz * 0.5 + 0.5;
-    // ivec2 reprojectedPixel = ivec2(reprojectedPosition.xy * screenSize);
+    // if (surface.exists) {
+    //    calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
+    // }
 
-    // float prevDepth = texture(sampler2D(prevDepthTexture), reprojectedPosition.xy).x;
-    // float currDepth = texture(sampler2D(depthTexture), fs_vertexTexture).x;
-    // vec3 prevCoord = depthToWorldPosition(prevDepth, reprojectedPosition.xy, inverse(prevViewProjectionMatrix));
-    // vec3 currCoord = depthToWorldPosition(currDepth, fs_vertexTexture.xy, inverse(viewProjectionMatrix));
-
-    // // float depthSimilarity = clamp(pow(prevDepth / currDepth, 4.0) + 0.2, 0.0, 1.0);
-    // vec3 deltaCoord = currCoord - prevCoord;
-    // float deltaDistance = dot(deltaCoord, deltaCoord);
-
-    // // if (deltaDistance > 0.1 * 0.1) {
-    // //     imageStore(reprojectionHistoryTexture, pixel, uvec4(0u));
-    // // } else {
-    // //     uint reprojectionHistory = imageLoad(reprojectionHistoryTexture, pixel).r + 1;
-
-    // //     imageStore(reprojectionHistoryTexture, pixel, uvec4(reprojectionHistory));
-
-    // //     finalColour = heatmap(float(reprojectionHistory) / 65536.0);   
-    // // }
-
-    // finalColour = vec3(1.0 / (1.0 + deltaDistance));
-
+    // for (int i = count - 1; i >= 0; --i) { // blend from far to near
+    //     vec3 surfaceColour = vec3(0.0);
+    //     // surfaces[i].ambientOcclusion *= raytracedFrameColour.r;
+    //     calculateLighting(surfaceColour, surfaces[i], pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
+    //     finalColour = mix(surfaceColour, finalColour, surfaces[i].transmission);
+    // }
 
     finalColour = pow(finalColour / (finalColour + vec3(1.0)), vec3(1.0/2.2)); 
 

@@ -35,8 +35,8 @@ SceneObject::~SceneObject() {
 	m_children.clear();
 }
 
-void SceneObject::updateBoundingTree() {
-
+void SceneObject::updateBoundingTree(TransformChain& parentTransform) {
+	// update bounds as if this subtree was at the origin, then bounds are transformed when needed
 }
 
 void SceneObject::preRender(TransformChain& parentTransform, double dt, double partialTicks) {
@@ -286,50 +286,21 @@ void SceneObject::setTransformation(Transformation& transform) {
 	m_currTransform = transform;
 }
 
-bool SceneObject::updateBounds() {
-	bool transformChanged = m_currTransform != m_prevTransform; // TODO: epsilon
-
-	if (transformChanged) { // ???
-		m_prevTransform = m_currTransform;
-	}
-
-	if (this->hasChildren()) {
-		bool childChanged = false;
-
-		for (auto it = m_children.begin(); it != m_children.end(); it++) {
-			if (it->second->object->updateBounds()) {
-				childChanged = true;
-			}
-		}
-
-		if (childChanged) {
-			// iterate all children, building enclosing bounding box
-
-			return true;
-		}
-	} else {
-
-	}
-}
-
 RaycastResult* SceneObject::raycast(TransformChain& parentTransform, dvec3 rayOrigin, dvec3 rayDirection) {
-	TransformChain       currTransform;
+	TransformChain currTransform;
 	currTransform.previous = &parentTransform;
 	currTransform.sceneObject = this;
 	currTransform.transformationMatrix = parentTransform.transformationMatrix * m_currTransform.getModelMatrix();
 
 	RaycastResult* closestResult = NULL;
 
-	// TODO: headPointerTexture bounds, if ray not intersect bounds, ignore child
+	// TODO: if ray not intersect bounds, ignore child
 	for (auto it = m_components.begin(); it != m_components.end(); it++) {
 		if (it->second->enabled) {
-			MeshComponent* meshComponent = dynamic_cast<MeshComponent*>(it->second->component);
-			if (meshComponent != NULL) {
-				RaycastResult* result = meshComponent->raycast(currTransform, rayOrigin, rayDirection);
-				if (result != NULL && (closestResult == NULL || result->distance < closestResult->distance)) {
-					closestResult = result;
-					closestResult->name = it->first;
-				}
+			RaycastResult* result = it->second->component->raycast(currTransform, rayOrigin, rayDirection);
+			if (result != NULL && (closestResult == NULL || result->distance < closestResult->distance)) {
+				closestResult = result;
+				closestResult->name = it->first;
 			}
 		}
 	}
@@ -450,26 +421,26 @@ void SceneGraph::renderDirect(ShaderProgram* shaderProgram, double dt, double pa
 	
 	TransformChain transform;
 	
-	//m_root->preRender(transform, dt, partialTicks);
+	m_root->preRender(transform, dt, partialTicks);
 	m_camera->render(dt, partialTicks);
 	m_root->renderDirect(shaderProgram, transform, dt, partialTicks);
 }
 
 void SceneGraph::postRender(double dt, double partialTicks) {
-	if (m_selection != NULL && m_selectionShader != NULL) {
-		ShaderProgram::use(m_selectionShader);
-		this->applyUniforms(m_selectionShader);
-		m_selectionShader->setUniform("modelMatrix", m_selection->transform.transformationMatrix);
-
-		Engine::screenRenderer()->getDepthTexture()->bind(0);
-		m_selectionShader->setUniform("depthTexture", 0);
-
-		Engine::screenRenderer()->getNormalTexture()->bind(1);
-		m_selectionShader->setUniform("normalTexture", 1);
-
-		m_selection->mesh->render(m_selection->transform, dt, partialTicks);
-		ShaderProgram::use(NULL);
-	}
+	//if (m_selection != NULL && m_selectionShader != NULL) {
+	//	ShaderProgram::use(m_selectionShader);
+	//	this->applyUniforms(m_selectionShader);
+	//	m_selectionShader->setUniform("modelMatrix", m_selection->transform.transformationMatrix);
+	//
+	//	Engine::screenRenderer()->getDepthTexture()->bind(0);
+	//	m_selectionShader->setUniform("depthTexture", 0);
+	//
+	//	Engine::screenRenderer()->getNormalTexture()->bind(1);
+	//	m_selectionShader->setUniform("normalTexture", 1);
+	//
+	//	m_selection->mesh->render(m_selection->transform, dt, partialTicks);
+	//	ShaderProgram::use(NULL);
+	//}
 }
 
 void SceneGraph::update(double dt) {

@@ -9,10 +9,12 @@
 #include "core/Engine.h"
 
 RaytraceRenderer::RaytraceRenderer(uint32_t renderWidth, uint32_t renderHeight):
-	m_renderWidth(renderWidth),
-	m_renderHeight(renderHeight) {
+	m_frequencyScale(2),
+	m_renderWidth(1),
+	m_renderHeight(1) {
 
-	m_texture = new Texture2D(renderWidth, renderHeight, TextureFormat::R32_G32_B32_A32_FLOAT, TextureFilter::NEAREST_PIXEL, TextureFilter::NEAREST_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
+	m_lowResolutionFrameTexture = new Texture2D(1, 1, TextureFormat::R32_G32_B32_A32_FLOAT, TextureFilter::LINEAR_PIXEL, TextureFilter::LINEAR_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
+	m_FullResolutionFrameTexture = new Texture2D(1, 1, TextureFormat::R32_G32_B32_A32_FLOAT, TextureFilter::LINEAR_PIXEL, TextureFilter::LINEAR_PIXEL, TextureWrap::CLAMP_TO_EDGE, TextureWrap::CLAMP_TO_EDGE);
 	this->setRenderResolution(renderWidth, renderHeight);
 
 	m_raytraceShader = new ShaderProgram();
@@ -21,13 +23,13 @@ RaytraceRenderer::RaytraceRenderer(uint32_t renderWidth, uint32_t renderHeight):
 }
 
 RaytraceRenderer::~RaytraceRenderer() {
-	delete m_texture;
+	delete m_lowResolutionFrameTexture;
 	delete m_raytraceShader;
 }
 
 void RaytraceRenderer::render(double dt, double partialTicks) {
-	constexpr int workgroupSizeX = 4;
-	constexpr int workgroupSizeY = 4;
+	constexpr int workgroupSizeX = 8;
+	constexpr int workgroupSizeY = 8;
 	ShaderProgram::use(m_raytraceShader);
 	Engine::scene()->applyUniforms(m_raytraceShader);
 	Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(0);
@@ -35,7 +37,6 @@ void RaytraceRenderer::render(double dt, double partialTicks) {
 	Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(2);
 	Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(3);
 	Engine::scene()->getMaterialManager()->bindMaterialBuffer(4);
-	this->bindTexture(0);
 	int32_t index = 0;
 	
 	LightProbe* skybox = Engine::scene()->getGlobalEnvironmentMap();
@@ -81,9 +82,20 @@ void RaytraceRenderer::render(double dt, double partialTicks) {
 	
 	LightProbe::getBRDFIntegrationMap()->bind(index);
 	m_raytraceShader->setUniform("BRDFIntegrationMap", index++);
-	
-	glDispatchCompute((m_renderWidth + workgroupSizeX) / workgroupSizeX, (m_renderHeight + workgroupSizeY) / workgroupSizeY, 1);
+
+
+	m_raytraceShader->setUniform("lowResolutionFramePass", true);
+	glBindImageTexture(0, m_lowResolutionFrameTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glDispatchCompute((m_lowResolutionFrameTexture->getWidth() + workgroupSizeX) / workgroupSizeX, (m_lowResolutionFrameTexture->getHeight() + workgroupSizeY) / workgroupSizeY, 1);
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+	m_raytraceShader->setUniform("lowResolutionFramePass", false);
+	m_lowResolutionFrameTexture->bind(index);
+	m_raytraceShader->setUniform("lowResolutionFrame", index++);
+	glBindImageTexture(0, m_FullResolutionFrameTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	glDispatchCompute((m_FullResolutionFrameTexture->getWidth() + workgroupSizeX) / workgroupSizeX, (m_FullResolutionFrameTexture->getHeight() + workgroupSizeY) / workgroupSizeY, 1);
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
 }
 
 void RaytraceRenderer::applyUniforms(ShaderProgram* program) {
@@ -103,10 +115,15 @@ void RaytraceRenderer::setRenderResolution(uint32_t width, uint32_t height) {
 		m_renderWidth = width;
 		m_renderHeight = height;
 
-		dynamic_cast<Texture2D*>(m_texture)->setSize(width, height);
+		dynamic_cast<Texture2D*>(m_lowResolutionFrameTexture)->setSize(m_renderWidth / m_frequencyScale, m_renderHeight / m_frequencyScale);
+		dynamic_cast<Texture2D*>(m_FullResolutionFrameTexture)->setSize(m_renderWidth, m_renderHeight);
 	}
 }
 
-void RaytraceRenderer::bindTexture(uint32_t unit) {
-	glBindImageTexture(unit, m_texture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+void RaytraceRenderer::bindFrameTexture(uint32_t unit) {
+	glBindImageTexture(unit, m_FullResolutionFrameTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+}
+
+Texture2D* RaytraceRenderer::getFrameTexture() {
+	return m_FullResolutionFrameTexture;
 }

@@ -173,7 +173,10 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 
 	glBindImageTexture(3, m_reprojectionHistoryTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_R16UI);
 
-	Engine::raytraceRenderer()->bindTexture(6);
+	Engine::raytraceRenderer()->getFrameTexture()->makeResident(true);
+	m_screenShader->setUniform("raytracedFrame", Engine::raytraceRenderer()->getFrameTexture()->getPackedTextureHandle());
+	//Engine::raytraceRenderer()->bindFillTexture(6);
+
 	//Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(3);
 	//Engine::scene()->getStaticGeometryBuffer()->bindTriangleBuffer(4);
 	//Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(5);

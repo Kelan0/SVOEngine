@@ -289,7 +289,7 @@ int start_rasterizer(int argc, char** argv) {
 		//breakfastRoomObject->addComponent("breakfastroom_renderer", new RenderComponent("models/breakfast_room/breakfast_room", rasterShader));
 		//Engine::scene()->getRoot()->addChild("breakfastroom_object", breakfastRoomObject);
 
-		SceneObject* livingRoomObject = new SceneObject();
+		SceneObject* livingRoomObject = new SceneObject(Transformation(dvec3(0.0, 0.0, -10.0)));
 		livingRoomObject->addComponent("livingroom_renderer", new RenderComponent("models/living_room/living_room", rasterShader));
 		Engine::scene()->getRoot()->addChild("livingroom_object", livingRoomObject);
 

@@ -222,7 +222,7 @@ bool Engine::initRenderer() {
 	}
 
 	m_screenRenderer = new ScreenRenderer(m_window.size.x, m_window.size.y);
-	m_raytraceRenderer = new RaytraceRenderer(m_window.size.x / 2, m_window.size.y / 2);
+	m_raytraceRenderer = new RaytraceRenderer(m_window.size.x, m_window.size.y);
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	//glEnable(GL_RASTERIZER_DISCARD); // headPointerTexture if bottlenecked by vertex processing
 	return true;

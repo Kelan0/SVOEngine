@@ -3,7 +3,7 @@
 #include "core/pch.h"
 
 class ShaderProgram;
-class Texture;
+class Texture2D;
 
 class RaytraceRenderer {
 public:
@@ -21,12 +21,16 @@ public:
 
 	void setRenderResolution(uint32_t width, uint32_t height);
 
-	void bindTexture(uint32_t unit);
+	void bindFrameTexture(uint32_t unit);
+
+	Texture2D* getFrameTexture();
 private:
+	uint32_t m_frequencyScale;
 	uint32_t m_renderWidth;
 	uint32_t m_renderHeight;
 
-	Texture* m_texture;
+	Texture2D* m_lowResolutionFrameTexture;
+	Texture2D* m_FullResolutionFrameTexture;
 
 	ShaderProgram* m_raytraceShader;
 };

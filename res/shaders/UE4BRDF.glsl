@@ -1,6 +1,21 @@
 #include "globals.glsl"
 #include "lighting.glsl"
 
+//http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
+vec3 hemisphereSample_uniform(float u, float v) {
+    float phi = v * 2.0 * PI;
+    float cosTheta = 1.0 - u;
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+    
+vec3 hemisphereSample_cos(float u, float v) {
+    float phi = v * 2.0 * PI;
+    float cosTheta = sqrt(1.0 - u);
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    return vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+}
+
 float NormalDistributionGGX(float NDotH2, float a2) {
     float f = NDotH2 * (a2 - 1.0) + 1.0;
     return a2 / (PI * f * f);
@@ -34,8 +49,9 @@ vec3 orientToNormal(vec3 v, vec3 N) {
 }
 
 float sampleDiffusePDF(vec3 wo, vec3 wi, vec3 N, float a) {
-    vec3 L = wi;
-    return dot(L, N) * INV_PI;
+    // vec3 L = wi;
+    // return dot(L, N) * INV_PI;
+    return INV_PI;
 }
 
 float sampleSpecularPDF(vec3 wo, vec3 wi, vec3 N, float a) {
@@ -52,17 +68,18 @@ float sampleSpecularPDF(vec3 wo, vec3 wi, vec3 N, float a) {
 }
 
 vec3 sampleDiffuseBRDF(vec2 Xi, vec3 N) {
-    float phi = 2.0 * PI * Xi.x;
-    float theta = 0.5 * PI * Xi.y;
-    float cosPhi = cos(phi);
-    float sinPhi = sin(phi);
-    float cosTheta = cos(theta);
-    float sinTheta = sin(theta);
+    // float phi = 2.0 * PI * Xi.x;
+    // float theta = 0.5 * PI * Xi.y;
+    // float cosPhi = cos(phi);
+    // float sinPhi = sin(phi);
+    // float cosTheta = cos(theta);
+    // float sinTheta = sin(theta);
     
-    vec3 v;
-    v.x = sinTheta * cosPhi;
-    v.y = sinTheta * sinPhi;
-    v.z = cosTheta;
+    // vec3 v;
+    // v.x = sinTheta * cosPhi;
+    // v.y = sinTheta * sinPhi;
+    // v.z = cosTheta;
+    vec3 v = hemisphereSample_cos(Xi.x, Xi.y);
     return orientToNormal(v, N);
 }
 
@@ -84,18 +101,20 @@ vec3 sampleSpecularBRDF(vec2 Xi, vec3 N, vec3 V, float a2) {
 }
 
 vec3 sampleBRDF(vec3 wo, SurfacePoint surface, vec2 seed) {
-    float diffuseRatio = 0.5 * (1.0 - surface.metalness);
+    // float diffuseRatio = 0.5 * (1.0 - surface.metalness);
 
     vec2 Xi = nextRandomVec2(seed);
 
     float a = surface.roughness * surface.roughness;
     float a2 = a * a;
 
-    if (nextRandom(seed) < diffuseRatio) {
-        return sampleDiffuseBRDF(Xi, surface.normal);
-    } else {
+    // if (nextRandom(seed) < diffuseRatio) {
+    //     return sampleDiffuseBRDF(Xi, surface.normal);
+    // } else {
+    //     return sampleSpecularBRDF(Xi, surface.normal, wo, a2);
+    // }
+        // return sampleDiffuseBRDF(Xi, surface.normal);
         return sampleSpecularBRDF(Xi, surface.normal, wo, a2);
-    }
 }
 
 // Evaluates the BRDF for the given surface for the outgoing direction (wo) and incoming direction (wi)

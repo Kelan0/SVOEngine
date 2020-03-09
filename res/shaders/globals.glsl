@@ -493,9 +493,9 @@ Ray createRay(vec2 screenPos, vec3 cameraPos, mat4x3 cameraRays) {
 }
 
 vec3 heatmap(float norm) {
-    // black -> magenta -> yellow -> white
-    const uint gradientCount = 4;
-    vec3 colours[gradientCount] = vec3[](vec3(0, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0), vec3(1, 1, 1));
+    // // black -> magenta -> yellow -> white
+    // const uint gradientCount = 4;
+    // vec3 colours[gradientCount] = vec3[](vec3(0, 0, 0), vec3(1, 0, 1), vec3(1, 1, 0), vec3(1, 1, 1));
 
     // // blue -> cyan -> green -> yellow -> red
     // const uint gradientCount = 5;
@@ -505,18 +505,18 @@ vec3 heatmap(float norm) {
     // const uint gradientCount = 7;
     // vec3 colours[gradientCount] = vec3[](vec3(0, 0, 0), vec3(0, 0, 1), vec3(0, 1, 1), vec3(0, 1, 0), vec3(1, 1, 0), vec3(1, 0, 0), vec3(1, 1, 1));
 
-    float f = clamp(norm, 0.0, 1.0) * (gradientCount - 1);
-    uint a = uint(f);
-    uint b = uint(f + 1);
-    f -= a;
-    // r = colours[a][0] * (1 - f) + colours[b][0] * f;
-    return colours[a] * (1 - f) + colours[b] * f;
+    // float f = clamp(norm, 0.0, 1.0) * (gradientCount - 1);
+    // uint a = uint(f);
+    // uint b = uint(f + 1);
+    // f -= a;
+    // // r = colours[a][0] * (1 - f) + colours[b][0] * f;
+    // return colours[a] * (1 - f) + colours[b] * f;
 
-    // float f = 2.0 * clamp(norm, 0.0, 1.0);
-    // float r = max(0.0, f - 1.0);
-    // float b = max(0.0, 1.0 - f);
-    // float g = max(0.0, 1.0 - b - r);
-    // return vec3(r, g, b) * (1.0 - max(0.0, norm - 1.0));
+    float f = 2.0 * clamp(norm, 0.0, 1.0);
+    float r = max(0.0, f - 1.0);
+    float b = max(0.0, 1.0 - f);
+    float g = max(0.0, 1.0 - b - r);
+    return vec3(r, g, b) * (1.0 - max(0.0, norm - 1.0));
 }
 
 

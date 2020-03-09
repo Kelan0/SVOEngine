@@ -5,11 +5,11 @@
 #include "raytrace/intersection.glsl"
 
 #ifndef LOCAL_SIZE_X
-#define LOCAL_SIZE_X 4
+#define LOCAL_SIZE_X 84
 #endif
 
 #ifndef LOCAL_SIZE_Y
-#define LOCAL_SIZE_Y 4
+#define LOCAL_SIZE_Y 8
 #endif
 
 // CAMERA UNIFORMS
@@ -58,7 +58,12 @@ uniform int pointLightCount;
 uniform int directionLightCount;
 uniform int spotLightCount;
 
-layout(binding = 0, rgba32f) uniform image2D frame;
+// RAYTRACING
+uniform int maxRenderScale;
+uniform bool lowResolutionFramePass;
+uniform sampler2D lowResolutionFrame;
+
+layout(binding = 0, rgba32f) uniform image2D frameTexture;
 
 SurfacePoint readSurfacePoint(vec2 coord) {
     Fragment frag;
@@ -111,6 +116,8 @@ void calculateNextSurfacePoint(in Ray ray, in IntersectionInfo intersection, ino
     surface.reflection = fragment.reflection;
 }
 
+
+
 vec3 calculateDirectLight(in vec3 wo, in vec3 wi, in SurfacePoint surface) {
     vec3 radiance = vec3(0.0);
 
@@ -140,7 +147,7 @@ void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface
 
     float offsetEPS = 1e-2;
 
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 2; i++) {
         if (!currentSurface.exists || (energy.r < 0.05 && energy.g < 0.05 && energy.b < 0.05)) {
             break;
         }
@@ -157,12 +164,13 @@ void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface
 
         intersection.dist -= offsetEPS;
 
-        Le = currentSurface.emission * PI;
-        Fr = evaluateBRDF(wo, wi, currentSurface);
-        Li = calculateDirectLight(wo, wi, currentSurface);
-
-        radiance += (Le + Fr * Li) * energy;
-        energy *= Fr;
+        if (i != 0) { // skip first bounce
+            Le = currentSurface.emission * PI;
+            Fr = surface.albedo;//evaluateBRDF(wo, wi, currentSurface);
+            Li = calculateDirectLight(wo, wi, currentSurface);
+            radiance += (Le + Fr * Li) * energy;
+            energy *= Fr;
+        }
 
         calculateNextSurfacePoint(sampleRay, intersection, currentSurface);
     }
@@ -186,38 +194,173 @@ bool pathTracePrimaryRays(inout vec3 finalColour, vec2 screenPos) {
     return true;
 }
 
-layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;
-void main() {
-    const ivec2 workgroupCoord = ivec2(gl_WorkGroupID.xy);
+float getEdgeMagnitude(vec2 coord, vec2 pixelSize, float edgeRange) {
+
+    float NDotV = clamp(dot(
+        decodeNormal(texture(sampler2D(normalTexture), coord).rg), 
+        normalize(cameraPosition - depthToWorldPosition(texture2D(sampler2D(depthTexture), coord).x, coord, invViewProjectionMatrix))
+    ), 0.0, 1.0);
+
+    float NDotV2 = NDotV * NDotV;
+
+    vec2 offset00 = vec2(-0.5, -0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset10 = vec2(+0.5, -0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset01 = vec2(-0.5, +0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset11 = vec2(+0.5, +0.5) * vec2(pixelSize) * edgeRange;
+
+    vec3 normal00 = decodeNormal(texture2D(sampler2D(normalTexture), coord + offset00).rg);
+    float depth00 = texture2D(sampler2D(depthTexture), coord + offset00).x;
+    float dist00 = getLinearDepth(depth00, nearPlane, farPlane);
+
+    vec3 normal10 = decodeNormal(texture2D(sampler2D(normalTexture), coord + offset10).rg);
+    float depth10 = texture2D(sampler2D(depthTexture), coord + offset10).x;
+    float dist10 = getLinearDepth(depth10, nearPlane, farPlane);
+
+    vec3 normal01 = decodeNormal(texture2D(sampler2D(normalTexture), coord + offset01).rg);
+    float depth01 = texture2D(sampler2D(depthTexture), coord + offset01).x;
+    float dist01 = getLinearDepth(depth01, nearPlane, farPlane);
+
+    vec3 normal11 = decodeNormal(texture2D(sampler2D(normalTexture), coord + offset11).rg);
+    float depth11 = texture2D(sampler2D(depthTexture), coord + offset11).x;
+    float dist11 = getLinearDepth(depth11, nearPlane, farPlane);
+
+    vec3 normalGradient = (abs(normal10 - normal00) + abs(normal11 - normal01) + abs(normal01 - normal00) + abs(normal11 - normal10));
+    float depthGradient = (abs(dist10 - dist00) + abs(dist11 - dist01) + abs(dist01 - dist00) + abs(dist11 - dist10));
+
+    float f0 = dot(normalGradient, normalGradient);// * 0.1;
+    float f1 = depthGradient * depthGradient * NDotV2 * NDotV2;
+    return f0 + f1;
+}
+
+void calculateLowResolutionFrame() {
     const ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
-    const ivec2 frameSize = imageSize(frame);
+    const ivec2 frameSize = imageSize(frameTexture);
 
-    if (pixelCoord.x >= frameSize.x || pixelCoord.y >= frameSize.y) return;
-
-    vec2 screenPos = vec2(pixelCoord) / vec2(frameSize);
-    vec2 seed = screenPos;
-
-    SurfacePoint surface = readSurfacePoint(screenPos);
-
-    vec4 finalColour = imageLoad(frame, pixelCoord).rgba;
-
-    // TODO: accumulate occlusion factor + GI RGB colour for 
-    // each pixel Alternatively, accumulate some kind of colour 
-    // multiplier to multily the final rasterized scene colour by
-
-    if (surface.exists) {
-        vec4 currColour = vec4(0.0);
-        // calculateRaytracedLighting(finalColour.rgb, surface, pointLights, pointLightCount, BRDFIntegrationMap, cameraPosition, imageBasedLightingEnabled);
-        calculatePathTracedLighting(currColour.rgb, surface, seed);
-        if (cameraMoved) {
-            finalColour = vec4(0.0);
-        }
-
-        finalColour.rgb += currColour.rgb;
-        finalColour.a += 1.0;
-    } else {
-        finalColour = vec4(0.0);
+    if (pixelCoord.x >= frameSize.x || pixelCoord.y >= frameSize.y) {
+        return;
     }
 
-    imageStore(frame, pixelCoord, vec4(finalColour));
+    const vec2 invFrameSize = 1.0 / vec2(frameSize);
+    vec2 pixelPos = vec2(pixelCoord) * invFrameSize;
+
+    vec2 seed = pixelPos;
+    pixelPos += nextRandomVec2(seed) * invFrameSize; // jitter sample
+
+    vec4 finalColour = vec4(0.0);
+
+    SurfacePoint surface = readSurfacePoint(pixelPos);
+    
+    if (surface.exists) {
+        vec3 colour;
+        calculatePathTracedLighting(colour, surface, seed);
+
+        if (!cameraMoved)
+            finalColour = imageLoad(frameTexture, pixelCoord).rgba;
+
+        finalColour += vec4(colour, 1.0);
+    }
+
+    imageStore(frameTexture, pixelCoord, finalColour);
 }
+
+void calculateFullResolutionFrame() {
+    const ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    const ivec2 frameSize = imageSize(frameTexture);
+
+    if (pixelCoord.x >= frameSize.x || pixelCoord.y >= frameSize.y) {
+        return;
+    }
+    
+    const vec2 invFrameSize = 1.0 / vec2(frameSize);
+    vec2 pixelPos = vec2(pixelCoord) * invFrameSize;
+
+    float edgeMagnitude = getEdgeMagnitude(pixelPos, invFrameSize, 2.0);
+    
+    vec4 finalColour = vec4(0.0);
+
+    if (!cameraMoved)
+        finalColour = imageLoad(frameTexture, pixelCoord).rgba;
+
+    if (edgeMagnitude > 0.0225) {
+
+        vec2 seed = pixelPos;
+        pixelPos += nextRandomVec2(seed) * invFrameSize; // jitter sample
+        SurfacePoint surface = readSurfacePoint(pixelPos);
+
+        if (surface.exists) {
+            vec3 colour;
+            calculatePathTracedLighting(colour, surface, seed);
+
+            finalColour += vec4(colour, 1.0);
+        }
+    } else {
+        finalColour += texture2D(lowResolutionFrame, pixelPos);
+    }
+
+    imageStore(frameTexture, pixelCoord, finalColour);
+}
+
+layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;
+void main(void) {
+    if (lowResolutionFramePass) {
+        calculateLowResolutionFrame();
+    } else{
+        calculateFullResolutionFrame();
+    }
+}
+
+
+// void writePixel(ivec2 coord, vec3 colour, bool surfaceExists) {
+//     vec4 finalColour = vec4(0.0);
+
+//     if (surfaceExists) {
+//         if (!cameraMoved)
+//             finalColour = imageLoad(frame, coord).rgba;
+
+//         finalColour += vec4(colour, 1.0);
+//     }
+
+//     imageStore(frame, coord, finalColour);
+// }
+
+
+// layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;
+// void main() {
+//     const ivec2 workgroupCoord = ivec2(gl_WorkGroupID.xy);
+//     const ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy) * maxRenderScale;
+//     const ivec2 frameSize = imageSize(frame);
+
+//     if (pixelCoord.x >= frameSize.x || pixelCoord.y >= frameSize.y) return;
+//     const vec2 invFrameSize = 1.0 / vec2(frameSize);
+//     // float edgeMagnitude = clamp(getEdgeMagnitude(vec2(pixelCoord) * invFrameSize, vec2(maxRenderScale * 2) * invFrameSize) * 0.1, 0.0, 1.0);
+
+//     int sampleSize = 1;//1 << int(log2(mix(float(maxRenderScale), 1.0, edgeMagnitude)));
+//     int sampleCount = maxRenderScale / sampleSize;
+    
+//     if (lowResolutionFramePass) {
+//         for (int i = 0; i < sampleCount; ++i) {
+//             for (int j = 0; j < sampleCount; ++j) {
+//                 ivec2 sampleCoord = pixelCoord + ivec2(i, j) * sampleSize;
+//                 vec2 samplePos = sampleCoord * invFrameSize;
+//                 vec2 seed = samplePos;
+//                 samplePos += nextRandomVec2(seed) * invFrameSize * sampleSize; // jitter sample
+
+//                 vec3 colour;
+
+//                 SurfacePoint surface = readSurfacePoint(samplePos);
+
+//                 if (surface.exists) {
+//                     calculatePathTracedLighting(colour, surface, seed);
+//                 }
+
+//                 for (int u = 0; u < sampleSize; ++u) {
+//                     for (int v = 0; v < sampleSize; ++v) {
+//                         writePixel(sampleCoord + ivec2(u, v), colour, surface.exists);
+//                     }
+//                 }
+//             }
+//         }
+//     } else {
+//         imageStore(frame, )
+//     }
+// }

@@ -149,6 +149,7 @@
     <ClCompile Include="src\core\renderer\CubeMap.cpp" />
     <ClCompile Include="src\core\renderer\EnvironmentMap.cpp" />
     <ClCompile Include="src\core\renderer\FragmentBuffer.cpp" />
+    <ClCompile Include="src\core\renderer\GausianBlurRenderer.cpp" />
     <ClCompile Include="src\core\renderer\geometry\GeometryBuffer.cpp" />
     <ClCompile Include="src\core\renderer\geometry\MeshLoader.cpp" />
     <ClCompile Include="src\core\renderer\geometry\VertexTangentComputer.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="src\core\renderer\CubeMap.h" />
     <ClInclude Include="src\core\renderer\EnvironmentMap.h" />
     <ClInclude Include="src\core\renderer\FragmentBuffer.h" />
+    <ClInclude Include="src\core\renderer\GausianBlurRenderer.h" />
     <ClInclude Include="src\core\renderer\geometry\GeometryBuffer.h" />
     <ClInclude Include="src\core\renderer\geometry\MeshLoader.h" />
     <ClInclude Include="src\core\renderer\geometry\Mesh.h" />

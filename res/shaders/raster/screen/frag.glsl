@@ -58,7 +58,8 @@ uniform uvec2 skyboxEnvironmentTexture;
 uniform uvec2 BRDFIntegrationMap;
 uniform uvec2 pointLightIcon;
 
-layout(binding = 6, rgba32f) uniform image2D raytracedFrame;
+uniform uvec2 raytracedFrame;
+// layout(binding = 6, rgba32f) uniform image2D raytracedFrame;
 
 layout (binding = 0, r32ui) uniform uimage2D nodeHeads;
 layout (binding = 1, std430) buffer NodeBuffer {
@@ -223,6 +224,60 @@ vec4 renderEquirectangularCubemap(in samplerCube cubeTexture, ivec2 pixel, ivec2
 }
 
 
+
+float getEdgeMagnitude(vec2 coord, vec2 pixelSize, float edgeRange) {
+    float NDotV = clamp(dot(
+        decodeNormal(texture(sampler2D(normalTexture), coord).rg), 
+        normalize(cameraPosition - depthToWorldPosition(texture2D(sampler2D(depthTexture), coord).x, coord, invViewProjectionMatrix))
+    ), 0.0, 1.0);
+
+    vec2 offset00 = vec2(-0.5, -0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset10 = vec2(+0.5, -0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset01 = vec2(-0.5, +0.5) * vec2(pixelSize) * edgeRange;
+    vec2 offset11 = vec2(+0.5, +0.5) * vec2(pixelSize) * edgeRange;
+
+    vec3 normal00 = texture2D(sampler2D(normalTexture), coord + offset00).xyz;
+    float depth00 = texture2D(sampler2D(depthTexture), coord + offset00).x;
+    float dist00 = getLinearDepth(depth00, nearPlane, farPlane);
+
+    vec3 normal10 = texture2D(sampler2D(normalTexture), coord + offset10).xyz;
+    float depth10 = texture2D(sampler2D(depthTexture), coord + offset10).x;
+    float dist10 = getLinearDepth(depth10, nearPlane, farPlane);
+
+    vec3 normal01 = texture2D(sampler2D(normalTexture), coord + offset01).xyz;
+    float depth01 = texture2D(sampler2D(depthTexture), coord + offset01).x;
+    float dist01 = getLinearDepth(depth01, nearPlane, farPlane);
+
+    vec3 normal11 = texture2D(sampler2D(normalTexture), coord + offset11).xyz;
+    float depth11 = texture2D(sampler2D(depthTexture), coord + offset11).x;
+    float dist11 = getLinearDepth(depth11, nearPlane, farPlane);
+
+    vec3 normalGradient = (abs(normal10 - normal00) + abs(normal11 - normal01) + abs(normal01 - normal00) + abs(normal11 - normal10));
+    float depthGradient = (abs(dist10 - dist00) + abs(dist11 - dist01) + abs(dist01 - dist00) + abs(dist11 - dist10));
+
+    return dot(normalGradient, normalGradient) * 0.1 + depthGradient * depthGradient * NDotV * NDotV * NDotV * NDotV > 0.15 * 0.15 ? 1.0 : 0.0;
+}
+
+// float getEdgeMagnitude(vec2 coord, vec2 pixelSize) {
+//     vec2 coord00 = coord;
+//     vec2 coord10 = coord + vec2(pixelSize.x, 0);
+//     vec2 coord01 = coord + vec2(0, pixelSize.y);
+
+//     vec3 normal00 = texture2D(sampler2D(normalTexture), coord00).xyz;
+//     vec3 normal10 = texture2D(sampler2D(normalTexture), coord10).xyz;
+//     vec3 normal01 = texture2D(sampler2D(normalTexture), coord01).xyz;
+//     vec3 normalGradient = abs((normal10 - normal00) + (normal01 - normal00));
+
+//     float depth00 = getLinearDepth(texture2D(sampler2D(depthTexture), coord00).x, nearPlane, farPlane);
+//     float depth10 = getLinearDepth(texture2D(sampler2D(depthTexture), coord10).x, nearPlane, farPlane);
+//     float depth01 = getLinearDepth(texture2D(sampler2D(depthTexture), coord01).x, nearPlane, farPlane);
+//     float depthGradient = abs((depth10 - depth00) + (depth01 - depth00));
+
+//     float f0 = dot(normalGradient, normalGradient);
+//     float f1 = depthGradient * depthGradient;
+//     return f0 + f1;
+// }
+
 void main() {
     ivec2 pixel = ivec2(fs_vertexTexture * screenSize);
 
@@ -231,15 +286,17 @@ void main() {
     vec3 pixelDirection = createRay(fs_vertexTexture, cameraPosition, cameraRays).direction;
     vec3 finalColour = texture(samplerCube(skyboxEnvironmentTexture), pixelDirection.xyz).rgb;
 
-    vec4 raytracedFrameColour = imageLoad(raytracedFrame, ivec2(fs_vertexTexture * screenSize * 0.5)).rgba;
+    if (surface.exists) {
+        calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
+        finalColour += surface.emission;
+        // finalColour = vec3(getEdgeMagnitude(fs_vertexTexture, 1.0 / screenSize, 4.0) * 0.1);
+        vec4 raytracedFrameColour = texture2D(sampler2D(raytracedFrame), fs_vertexTexture);
 
-    if (raytracedFrameColour.a > 0.0) {
-        finalColour = raytracedFrameColour.rgb / raytracedFrameColour.a;
+        if (raytracedFrameColour.a > 0.0) {
+            finalColour *= raytracedFrameColour.rgb / raytracedFrameColour.a;
+        }
     }
 
-    // if (surface.exists) {
-    //    calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
-    // }
 
     // for (int i = count - 1; i >= 0; --i) { // blend from far to near
     //     vec3 surfaceColour = vec3(0.0);

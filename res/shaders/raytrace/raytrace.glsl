@@ -19,8 +19,12 @@
 #define BVH_REFERENCE_BUFFER_BINDING 3
 #endif
 
+#ifndef EMISSIVE_TRIANGLE_BUFFER_BINDING
+#define EMISSIVE_TRIANGLE_BUFFER_BINDING 4
+#endif
+
 #ifndef MATERIAL_BUFFER_BINDING
-#define MATERIAL_BUFFER_BINDING 4
+#define MATERIAL_BUFFER_BINDING 5
 #endif
 
 struct IntersectionInfo {
@@ -54,9 +58,14 @@ layout (binding = BVH_NODE_BUFFER_BINDING, std430) buffer BVHNodeBuffer {
 layout (binding = BVH_REFERENCE_BUFFER_BINDING, std430) buffer BVHReferenceBuffer {
     uint bvhReferences[];
 };
+layout (binding = EMISSIVE_TRIANGLE_BUFFER_BINDING, std430) buffer EmissiveTriangleBuffer {
+    uint emissiveTriangleBuffer[];
+};
 layout (binding = MATERIAL_BUFFER_BINDING, std430) buffer MaterialBuffer {
     PackedMaterial materialBuffer[];
 };
+
+uniform uint emissiveTriangleCount;
 
 Vertex getVertex(uint vertexIndex) {
     RawVertex v = vertices[vertexIndex];
@@ -118,6 +127,16 @@ Fragment getInterpolatedIntersectionFragment(IntersectionInfo intersection) {
     }
     
     return calculateFragment(material, position, normal, tangent, texture, depth, hasTangent, hasMaterial);
+}
+
+vec3 getNextEmissiveSampleDirection(inout vec2 seed, vec3 origin) {
+    uint sampleTriangleIndex = emissiveTriangleBuffer[uint(nextRandom(seed) * emissiveTriangleCount)];
+    
+    Vertex v0, v1, v2;
+    getTriangleVertices(sampleTriangleIndex, v0, v1, v2);
+
+    vec3 samplePoint = getRandomTrianglePoint(seed, v0.position, v1.position, v2.position);
+    return normalize(samplePoint - origin);
 }
 
 #endif

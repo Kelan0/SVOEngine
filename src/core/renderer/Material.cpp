@@ -122,11 +122,18 @@ Material::Material(MaterialConfiguration configuration) {
 	}
 
 
-	double eps = 1.0 / 255.0;
+	constexpr double eps = 1.0 / 255.0;
+
 	if (m_alphaMap != NULL || m_transmission.r > eps || m_transmission.g > eps || m_transmission.b > eps) {
 		m_transparent = true;
 	} else {
 		m_transparent = false;
+	}
+
+	if (/*m_emissionMap != NULL || */ m_emission.r > eps || m_emission.g > eps || m_emission.b > eps) {
+		m_emissive = true;
+	} else {
+		m_emissive = false;
 	}
 }
 
@@ -283,6 +290,10 @@ bool Material::isRoughnessInverted() const {
 
 bool Material::isTransparent() const {
 	return m_transparent;
+}
+
+bool Material::isEmissive() const {
+	return m_emissive;
 }
 
 bool Material::isDoubleSided() const {

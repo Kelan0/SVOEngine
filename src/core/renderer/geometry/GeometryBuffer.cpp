@@ -1,4 +1,7 @@
 #include "core/renderer/geometry/GeometryBuffer.h"
+#include "core/renderer/MaterialManager.h"
+#include "core/renderer/ShaderProgram.h"
+#include "core/scene/Scene.h"
 
 GeometryBuffer::GeometryBuffer() {
 	glGenVertexArrays(1, &m_vao);
@@ -30,6 +33,10 @@ void GeometryBuffer::bindBVHNodeBuffer(uint32_t index) {
 
 void GeometryBuffer::bindBVHReferenceBuffer(uint32_t index) {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, m_bvhReferenceBuffer);
+}
+
+void GeometryBuffer::bindEmissiveTriangleBuffer(uint32_t index) {
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, index, m_emissiveTriangleBuffer);
 }
 
 void GeometryBuffer::reset() {
@@ -89,10 +96,20 @@ void GeometryBuffer::upload(const std::vector<Mesh::vertex>& vertices, const std
 		uint64_t triangleOffset = m_triangles.size();
 		m_triangles.resize(triangleOffset + triangles.size());
 		for (int i = 0; i < triangles.size(); i++) {
-			m_triangles[triangleOffset + i].i0 = vertexOffset + triangles[i].i0;
-			m_triangles[triangleOffset + i].i1 = vertexOffset + triangles[i].i1;
-			m_triangles[triangleOffset + i].i2 = vertexOffset + triangles[i].i2;
+			uint32_t triangleIndex = triangleOffset + i;
+			m_triangles[triangleIndex].i0 = vertexOffset + triangles[i].i0;
+			m_triangles[triangleIndex].i1 = vertexOffset + triangles[i].i1;
+			m_triangles[triangleIndex].i2 = vertexOffset + triangles[i].i2;
+
+			int32_t materialIndex = m_vertices[m_triangles[triangleIndex].i0].material;
+			if (materialIndex >= 0) {
+				Material* material = Engine::scene()->getMaterialManager()->getMaterial(materialIndex);
+				if (material->isEmissive()) {
+					m_emissiveTriangles.push_back(triangleIndex);
+				}
+			}
 		}
+
 		//std::memcpy(&m_triangles[triangleOffset], &triangles[0], sizeof(Mesh::triangle) * triangles.size());
 
 		if (transformation != dmat4(1)) {
@@ -110,6 +127,11 @@ void GeometryBuffer::upload(const std::vector<Mesh::vertex>& vertices, const std
 		//glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, triangleOffset * sizeof(Mesh::triangle), triangles.size() * sizeof(Mesh::triangle), &m_triangles[triangleOffset]);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_triangles.size() * sizeof(Mesh::triangle), &m_triangles[0], GL_STATIC_DRAW);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_emissiveTriangleBuffer);
+		//glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, triangleOffset * sizeof(Mesh::triangle), triangles.size() * sizeof(Mesh::triangle), &m_triangles[triangleOffset]);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, m_emissiveTriangles.size() * sizeof(uint32_t), &m_emissiveTriangles[0], GL_STATIC_DRAW);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 		geometryRegion->vertexOffset = vertexOffset;
 		geometryRegion->triangleOffset = triangleOffset;
@@ -132,6 +154,10 @@ void GeometryBuffer::buildBVH() {
 	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BVH::PrimitiveReference) * primitiveReferences.size(), &primitiveReferences[0], GL_STATIC_DRAW);
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
+void GeometryBuffer::applyUniforms(ShaderProgram* shaderProgram) {
+	shaderProgram->setUniform("emissiveTriangleCount", (uint32_t) m_emissiveTriangles.size());
 }
 
 uint64_t GeometryBuffer::getAllocatedVertexCount() const {

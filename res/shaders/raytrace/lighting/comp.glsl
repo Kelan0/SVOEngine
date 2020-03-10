@@ -118,7 +118,7 @@ void calculateNextSurfacePoint(in Ray ray, in IntersectionInfo intersection, ino
 
 
 
-vec3 calculateDirectLight(in vec3 wo, in vec3 wi, in SurfacePoint surface) {
+vec3 calculateDirectLight(in vec3 wo, in vec3 wi, in SurfacePoint surface, inout vec2 seed) {
     vec3 radiance = vec3(0.0);
 
     // Ray sampleRay = createRay(surface.position + wi * 1e-5, wi);
@@ -128,12 +128,21 @@ vec3 calculateDirectLight(in vec3 wo, in vec3 wi, in SurfacePoint surface) {
     //     radiance += texture(skyboxEnvironmentTexture, wi).rgb * PI;
     // }
 
-    // analytic light sources
+    // emissive surfaces
+    vec3 sampleDirection = getNextEmissiveSampleDirection(seed, surface.position);
+    Ray sampleRay = createRay(surface.position + sampleDirection * 1e-6, sampleDirection);
+
+    IntersectionInfo intersection;
+    intersection.dist = INFINITY;
+    if (sampleRayIntersectsBVH(sampleRay, false, intersection)) {
+        Fragment frag = getInterpolatedIntersectionFragment(intersection);
+        radiance += frag.emission;
+    }
 
     return radiance;
 }
 
-void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface, in vec2 seed) {
+void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface, inout vec2 seed) {
     vec3 radiance = vec3(0.0);
 
     vec3 wo, wi;
@@ -147,7 +156,7 @@ void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface
 
     float offsetEPS = 1e-2;
 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 1; i++) {
         if (!currentSurface.exists || (energy.r < 0.05 && energy.g < 0.05 && energy.b < 0.05)) {
             break;
         }
@@ -158,21 +167,22 @@ void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface
         sampleRay = createRay(currentSurface.position + wi * offsetEPS, wi);
         intersection.dist = INFINITY;
         if (!sampleRayIntersectsBVH(sampleRay, false, intersection)) {
-            radiance += texture(skyboxEnvironmentTexture, wi).rgb * PI * energy;
+            // radiance += texture(skyboxEnvironmentTexture, wi).rgb * PI * energy;
             break;
         }
 
-        intersection.dist -= offsetEPS;
+        radiance += calculateDirectLight(wo, wi, currentSurface, seed);
+        // intersection.dist -= offsetEPS;
 
-        if (i != 0) { // skip first bounce
-            Le = currentSurface.emission * PI;
-            Fr = surface.albedo;//evaluateBRDF(wo, wi, currentSurface);
-            Li = calculateDirectLight(wo, wi, currentSurface);
-            radiance += (Le + Fr * Li) * energy;
-            energy *= Fr;
-        }
+        // // if (i != 0) { // skip first bounce
+        //     Le = currentSurface.emission * PI;
+        //     Fr = surface.albedo;//evaluateBRDF(wo, wi, currentSurface);
+        //     Li = calculateDirectLight(wo, wi, currentSurface, seed);
+        //     radiance += (Le + Fr * Li) * energy;
+        //     energy *= Fr;
+        // // }
 
-        calculateNextSurfacePoint(sampleRay, intersection, currentSurface);
+        // calculateNextSurfacePoint(sampleRay, intersection, currentSurface);
     }
 
     finalColour = radiance;// * vec3(0.5, 1.0, 0.8);
@@ -252,7 +262,8 @@ void calculateLowResolutionFrame() {
     
     if (surface.exists) {
         vec3 colour;
-        calculatePathTracedLighting(colour, surface, seed);
+        //calculatePathTracedLighting(colour, surface, seed);
+        colour = calculateDirectLight(vec3(0.0), vec3(0.0), surface, seed);
 
         if (!cameraMoved)
             finalColour = imageLoad(frameTexture, pixelCoord).rgba;
@@ -274,14 +285,14 @@ void calculateFullResolutionFrame() {
     const vec2 invFrameSize = 1.0 / vec2(frameSize);
     vec2 pixelPos = vec2(pixelCoord) * invFrameSize;
 
-    float edgeMagnitude = getEdgeMagnitude(pixelPos, invFrameSize, 2.0);
+    // float edgeMagnitude = getEdgeMagnitude(pixelPos, invFrameSize, 2.0);
     
     vec4 finalColour = vec4(0.0);
 
     if (!cameraMoved)
         finalColour = imageLoad(frameTexture, pixelCoord).rgba;
 
-    if (edgeMagnitude > 0.0225) {
+    // if (edgeMagnitude > 0.0225) {
 
         vec2 seed = pixelPos;
         pixelPos += nextRandomVec2(seed) * invFrameSize; // jitter sample
@@ -289,13 +300,14 @@ void calculateFullResolutionFrame() {
 
         if (surface.exists) {
             vec3 colour;
-            calculatePathTracedLighting(colour, surface, seed);
+            //calculatePathTracedLighting(colour, surface, seed);
+            colour = calculateDirectLight(vec3(0.0), vec3(0.0), surface, seed);
 
             finalColour += vec4(colour, 1.0);
         }
-    } else {
-        finalColour += texture2D(lowResolutionFrame, pixelPos);
-    }
+    // } else {
+    //     finalColour += texture2D(lowResolutionFrame, pixelPos);
+    // }
 
     imageStore(frameTexture, pixelCoord, finalColour);
 }
@@ -303,7 +315,7 @@ void calculateFullResolutionFrame() {
 layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;
 void main(void) {
     if (lowResolutionFramePass) {
-        calculateLowResolutionFrame();
+        // calculateLowResolutionFrame();
     } else{
         calculateFullResolutionFrame();
     }

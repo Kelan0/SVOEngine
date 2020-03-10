@@ -101,20 +101,18 @@ vec3 sampleSpecularBRDF(vec2 Xi, vec3 N, vec3 V, float a2) {
 }
 
 vec3 sampleBRDF(vec3 wo, SurfacePoint surface, vec2 seed) {
-    // float diffuseRatio = 0.5 * (1.0 - surface.metalness);
+    float diffuseRatio = 0.5 * (1.0 - surface.metalness);
 
     vec2 Xi = nextRandomVec2(seed);
 
     float a = surface.roughness * surface.roughness;
     float a2 = a * a;
 
-    // if (nextRandom(seed) < diffuseRatio) {
-    //     return sampleDiffuseBRDF(Xi, surface.normal);
-    // } else {
-    //     return sampleSpecularBRDF(Xi, surface.normal, wo, a2);
-    // }
-        // return sampleDiffuseBRDF(Xi, surface.normal);
+    if (nextRandom(seed) < diffuseRatio) {
+        return sampleDiffuseBRDF(Xi, surface.normal);
+    } else {
         return sampleSpecularBRDF(Xi, surface.normal, wo, a2);
+    }
 }
 
 // Evaluates the BRDF for the given surface for the outgoing direction (wo) and incoming direction (wi)

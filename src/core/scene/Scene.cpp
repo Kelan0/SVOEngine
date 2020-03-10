@@ -572,6 +572,7 @@ void SceneGraph::applyUniforms(ShaderProgram* shaderProgram) {
 	m_camera->applyUniforms(shaderProgram);
 	m_voxelizer->applyUniforms(shaderProgram);
 	m_materialManager->applyUniforms(shaderProgram);
+	m_staticGeometryBuffer->applyUniforms(shaderProgram);
 	Engine::screenRenderer()->applyUniforms(shaderProgram);
 	// Engine::screenRenderer()->getLayeredDepthBuffer()->applyUniforms(shaderProgram);
 	shaderProgram->setUniform("screenSize", Engine::instance()->getWindowSize().x, Engine::instance()->getWindowSize().y);

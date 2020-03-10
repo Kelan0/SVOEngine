@@ -86,7 +86,7 @@ bool rayIntersectsNode(in Ray ray, in BVHNode node, inout float dist) {
 
 // Moller Trumbore triangle intersection test
 bool rayIntersectsTriangle(in Ray ray, in vec3 v0, in vec3 v1, in vec3 v2, bool cullBackface, inout float dist, out vec3 barycentric) {
-    #define _EPS 1e-6
+    #define _EPS 1e-8
     vec3 e1, e2, h, s, q;
     float a,f,u,v;
     e1 = v1 - v0;

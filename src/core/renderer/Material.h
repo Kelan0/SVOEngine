@@ -108,6 +108,8 @@ public:
 
 	bool isTransparent() const;
 
+	bool isEmissive() const;
+
 	bool isDoubleSided() const;
 
 	TextureFilter getMinificationFilter() const;
@@ -137,6 +139,7 @@ private:
 	double m_metalness = 0.0;
 	bool m_roughnessInverted = false; // true if higher roughness values represent gloss/specular/shininess
 	bool m_transparent = false; // true if the material transmits light at any point on the surface.
+	bool m_emissive = false; // true if the material emits light at any point on the surface.
 	bool m_doubleSided = false; // True if the material surface should be rendered from both front and back sides.
 
 	TextureFilter m_minFilter;

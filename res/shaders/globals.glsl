@@ -557,6 +557,7 @@ uint hash3u(uint x, uint y, uint z) {
     return x;
 }
 
+// Uniformly distributed random float between 0 and 1
 float random(vec2 seed) {
     uvec2 u = floatBitsToUint(seed);
     return uintBitsToFloat((hash2u(u.x, u.y) & 0x007FFFFFu) | 0x3F800000u) - 1.0;
@@ -593,4 +594,20 @@ float RadicalInverse_VdC(uint bits) {
 vec2 Hammersley(uint i, uint n) {
      return vec2(float(i) / float(n), RadicalInverse_VdC(i));
  }
+
+vec3 getTriangleWorldPoint(vec2 Xi, vec3 v0, vec3 v1, vec3 v2) {
+    float u = Xi.x;
+    float v = Xi.y;
+ 
+    if (u + v >= 1.0) {
+        u = 1.0 - u;
+        v = 1.0 - v;
+    }
+ 
+    return v0 + (((v1 - v0) * u) + ((v2 - v0) * v));
+}
+
+vec3 getRandomTrianglePoint(inout vec2 seed, vec3 v0, vec3 v1, vec3 v2) {
+    return getTriangleWorldPoint(nextRandomVec2(seed), v0, v1, v2);
+}
 #endif

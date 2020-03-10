@@ -8,6 +8,8 @@
 // struct PrimitiveInfo;
 // struct PrimitiveReference;
 
+class ShaderProgram;
+
 struct GeometryRegion {
 	uint64_t vertexOffset;
 	uint64_t triangleOffset;
@@ -28,6 +30,8 @@ public:
 	
 	void bindBVHReferenceBuffer(uint32_t index);
 
+	void bindEmissiveTriangleBuffer(uint32_t index);
+
 	void reset();
 
 	void initializeBuffers();
@@ -39,6 +43,8 @@ public:
 	void upload(const std::vector<Mesh::vertex>& vertices, const std::vector<Mesh::triangle>& triangles, GeometryRegion* geometryRegion, glm::dmat4 transformation = dmat4(1.0));
 
 	void buildBVH();
+
+	void applyUniforms(ShaderProgram* shaderProgram);
 
 	uint64_t getAllocatedVertexCount() const;
 
@@ -62,11 +68,13 @@ private:
 	uint32_t m_triangleBuffer; // buffer containing linear list of all scene triangles
 	uint32_t m_bvhNodeBuffer; // buffer containing linear list of BVH nodes
 	uint32_t m_bvhReferenceBuffer; // buffer containing linear list of BVH primitive references.
+	uint32_t m_emissiveTriangleBuffer; // buffer containing a list of indices to all triangles that have an emissive material
 
 	uint32_t m_vao;
 
 	std::vector<Mesh::vertex> m_vertices;
 	std::vector<Mesh::triangle> m_triangles;
+	std::vector<uint32_t> m_emissiveTriangles;
 	BVH* m_bvh;
 };
 

@@ -9,7 +9,7 @@
 #include "core/Engine.h"
 
 RaytraceRenderer::RaytraceRenderer(uint32_t renderWidth, uint32_t renderHeight):
-	m_frequencyScale(2),
+	m_frequencyScale(1),
 	m_renderWidth(1),
 	m_renderHeight(1) {
 
@@ -36,7 +36,8 @@ void RaytraceRenderer::render(double dt, double partialTicks) {
 	Engine::scene()->getStaticGeometryBuffer()->bindTriangleBuffer(1);
 	Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(2);
 	Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(3);
-	Engine::scene()->getMaterialManager()->bindMaterialBuffer(4);
+	Engine::scene()->getStaticGeometryBuffer()->bindEmissiveTriangleBuffer(4);
+	Engine::scene()->getMaterialManager()->bindMaterialBuffer(5);
 	int32_t index = 0;
 	
 	LightProbe* skybox = Engine::scene()->getGlobalEnvironmentMap();

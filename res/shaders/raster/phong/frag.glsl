@@ -94,7 +94,7 @@ void main() {
     } else {
         outAlbedo = vec4(fragment.albedo, 1.0);
         outEmission = fragment.emission;
-        outNormal = encodeNormal(fs_in.worldNormal);//fragment.normal);
+        outNormal = encodeNormal(fragment.normal);
         outRoughness = fragment.roughness;
         outMetalness = fragment.metalness;
         outAmbientOcclusion = fragment.ambientOcclusion;

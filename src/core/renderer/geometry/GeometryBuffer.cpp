@@ -9,6 +9,7 @@ GeometryBuffer::GeometryBuffer() {
 	glGenBuffers(1, &m_triangleBuffer);
 	glGenBuffers(1, &m_bvhNodeBuffer);
 	glGenBuffers(1, &m_bvhReferenceBuffer);
+	glGenBuffers(1, &m_emissiveTriangleBuffer);
 }
 
 GeometryBuffer::~GeometryBuffer() {
@@ -17,6 +18,7 @@ GeometryBuffer::~GeometryBuffer() {
 	glDeleteBuffers(1, &m_triangleBuffer);
 	glDeleteBuffers(1, &m_bvhNodeBuffer);
 	glDeleteBuffers(1, &m_bvhReferenceBuffer);
+	glDeleteBuffers(1, &m_emissiveTriangleBuffer);
 }
 
 void GeometryBuffer::bindVertexBuffer(uint32_t index) {

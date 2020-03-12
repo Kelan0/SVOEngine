@@ -287,9 +287,9 @@ void main() {
     vec3 finalColour = texture(samplerCube(skyboxEnvironmentTexture), pixelDirection.xyz).rgb;
 
     if (surface.exists) {
-        // calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
-        // finalColour += surface.emission;
-        finalColour = vec3(1.0);
+        calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
+        finalColour += surface.emission;
+        // finalColour = vec3(1.0);
         vec4 raytracedFrameColour = texture2D(sampler2D(raytracedFrame), fs_vertexTexture);
 
         if (raytracedFrameColour.a > 0.0) {

@@ -85,10 +85,10 @@ void RaytraceRenderer::render(double dt, double partialTicks) {
 	m_raytraceShader->setUniform("BRDFIntegrationMap", index++);
 
 
-	m_raytraceShader->setUniform("lowResolutionFramePass", true);
-	glBindImageTexture(0, m_lowResolutionFrameTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-	glDispatchCompute((m_lowResolutionFrameTexture->getWidth() + workgroupSizeX) / workgroupSizeX, (m_lowResolutionFrameTexture->getHeight() + workgroupSizeY) / workgroupSizeY, 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+	//m_raytraceShader->setUniform("lowResolutionFramePass", true);
+	//glBindImageTexture(0, m_lowResolutionFrameTexture->getTextureName(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+	//glDispatchCompute((m_lowResolutionFrameTexture->getWidth() + workgroupSizeX) / workgroupSizeX, (m_lowResolutionFrameTexture->getHeight() + workgroupSizeY) / workgroupSizeY, 1);
+	//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 	m_raytraceShader->setUniform("lowResolutionFramePass", false);
 	m_lowResolutionFrameTexture->bind(index);

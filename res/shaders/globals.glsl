@@ -110,6 +110,7 @@ struct PackedMaterial {
 struct SurfacePoint {
     bool exists;
     bool transparent;
+    bool emissive;
     bool invalidNormal;
 
     // Local properties
@@ -350,9 +351,10 @@ SurfacePoint packedFragmentToSurfacePoint(PackedFragment packedFragment, vec2 co
 
     point.position = depthToWorldPosition(point.depth, coord, invViewProjectionMatrix);
 
-    const float eps = 1.0 / 255.0;
+    const float eps = 1.0 / 256.0;
     point.exists = point.depth > 0.0 && point.depth < 1.0;
-    point.transparent = point.transmission.x > eps || point.transmission.y > eps || point.transmission.z > eps;
+    point.transparent = point.transmission.r > eps || point.transmission.g > eps || point.transmission.b > eps;
+    point.emissive = point.emission.r > eps || point.emission.g > eps || point.emission.b > eps;
     point.invalidNormal = false;//isinf(point.normal.x + point.normal.y + point.normal.z) || isnan(point.normal.x + point.normal.y + point.normal.z);
     point.ambientOcclusion = 1.0;
 
@@ -376,7 +378,33 @@ SurfacePoint fragmentToSurfacePoint(Fragment fragment, vec2 coord, mat4 invViewP
 
     const float eps = 1.0 / 255.0;
     point.exists = point.depth > 0.0 && point.depth < 1.0;
-    point.transparent = point.transmission.x > eps || point.transmission.y > eps || point.transmission.z > eps;
+    point.transparent = point.transmission.r > eps || point.transmission.g > eps || point.transmission.b > eps;
+    point.emissive = point.emission.r > eps || point.emission.g > eps || point.emission.b > eps;
+    point.invalidNormal = false;//isinf(point.normal.x + point.normal.y + point.normal.z) || isnan(point.normal.x + point.normal.y + point.normal.z);
+    point.ambientOcclusion = 1.0;
+    
+    return point;
+}
+
+SurfacePoint fragmentToSurfacePoint(Fragment fragment, Ray ray) {
+    SurfacePoint point;
+
+    point.depth = fragment.depth;
+    point.normal = fragment.normal;
+    point.position = ray.origin + ray.direction * fragment.depth;
+
+    point.albedo = fragment.albedo;
+    point.transmission = fragment.transmission;
+    point.emission = fragment.emission;
+    point.metalness = fragment.metalness;
+    point.roughness = fragment.roughness;
+    point.irradiance = fragment.irradiance;
+    point.reflection = fragment.reflection;
+
+    const float eps = 1.0 / 255.0;
+    point.exists = point.depth > 0.0 && point.depth < 1.0;
+    point.transparent = point.transmission.r > eps || point.transmission.g > eps || point.transmission.b > eps;
+    point.emissive = point.emission.r > eps || point.emission.g > eps || point.emission.b > eps;
     point.invalidNormal = false;//isinf(point.normal.x + point.normal.y + point.normal.z) || isnan(point.normal.x + point.normal.y + point.normal.z);
     point.ambientOcclusion = 1.0;
     

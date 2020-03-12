@@ -5,7 +5,7 @@
 #include "raytrace/intersection.glsl"
 
 #ifndef LOCAL_SIZE_X
-#define LOCAL_SIZE_X 84
+#define LOCAL_SIZE_X 8
 #endif
 
 #ifndef LOCAL_SIZE_Y
@@ -65,6 +65,9 @@ uniform sampler2D lowResolutionFrame;
 
 layout(binding = 0, rgba32f) uniform image2D frameTexture;
 
+vec2 pixelSeed;
+vec2 workgroupSeed;
+
 SurfacePoint readSurfacePoint(vec2 coord) {
     Fragment frag;
     frag.depth = texture(depthTexture, coord).x;
@@ -118,25 +121,48 @@ void calculateNextSurfacePoint(in Ray ray, in IntersectionInfo intersection, ino
 
 
 
-vec3 calculateDirectLight(in vec3 wo, in vec3 wi, in SurfacePoint surface, inout vec2 seed) {
+vec3 calculateDirectLight(in SurfacePoint surface) {
     vec3 radiance = vec3(0.0);
 
-    // Ray sampleRay = createRay(surface.position + wi * 1e-5, wi);
-    // float sampleDistance = INFINITY;
-    // if (!occlusionRayIntersectsBVH(sampleRay, true, sampleDistance)) {
-    //     // ray reaches sky, add environment radiance
-    //     radiance += texture(skyboxEnvironmentTexture, wi).rgb * PI;
-    // }
+    radiance += surface.emission;
 
     // emissive surfaces
-    vec3 sampleDirection = getNextEmissiveSampleDirection(seed, surface.position);
+    vec3 sampleDirection = getNextEmissiveSampleDirection(pixelSeed, surface.position);
+    Ray sampleRay = createRay(surface.position + sampleDirection * 1e-6, sampleDirection);
+
+    float NDotL = dot(surface.normal, sampleDirection);
+    float attenuation = 0.0;
+
+    if (NDotL > 1e-6) {
+        IntersectionInfo intersection;
+        intersection.dist = INFINITY;
+        if (sampleRayIntersectsBVH(sampleRay, false, intersection)) {
+            Fragment frag = getInterpolatedIntersectionFragment(intersection);
+            attenuation = getAttenuation(intersection.dist);
+            radiance += frag.emission * attenuation * NDotL;
+        }
+    }
+
+    return radiance;
+}
+
+vec3 calculateAmbientOcclusion(in SurfacePoint surface) {
+    vec3 radiance = vec3(0.0);
+
+    // shoot random ray in hemisphere, get direct lighting at hit point, 
+    // this is assumed to be the incoming radiance
+
+    vec3 sampleDirection = orientToNormal(hemisphereSample_cos(nextRandom(workgroupSeed), nextRandom(workgroupSeed)), surface.normal);
     Ray sampleRay = createRay(surface.position + sampleDirection * 1e-6, sampleDirection);
 
     IntersectionInfo intersection;
     intersection.dist = INFINITY;
     if (sampleRayIntersectsBVH(sampleRay, false, intersection)) {
         Fragment frag = getInterpolatedIntersectionFragment(intersection);
-        radiance += frag.emission;
+        SurfacePoint intersectionSurface = fragmentToSurfacePoint(frag, sampleRay);
+        float attenuation = getAttenuation(intersection.dist);
+        float NDotL = dot(surface.normal, sampleDirection);
+        radiance += calculateDirectLight(intersectionSurface) * attenuation * NDotL;
     }
 
     return radiance;
@@ -171,13 +197,13 @@ void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface
             break;
         }
 
-        radiance += calculateDirectLight(wo, wi, currentSurface, seed);
+        radiance += calculateDirectLight(currentSurface);
         // intersection.dist -= offsetEPS;
 
         // // if (i != 0) { // skip first bounce
         //     Le = currentSurface.emission * PI;
         //     Fr = surface.albedo;//evaluateBRDF(wo, wi, currentSurface);
-        //     Li = calculateDirectLight(wo, wi, currentSurface, seed);
+        //     Li = calculateDirectLight(currentSurface);
         //     radiance += (Le + Fr * Li) * energy;
         //     energy *= Fr;
         // // }
@@ -263,7 +289,7 @@ void calculateLowResolutionFrame() {
     if (surface.exists) {
         vec3 colour;
         //calculatePathTracedLighting(colour, surface, seed);
-        colour = calculateDirectLight(vec3(0.0), vec3(0.0), surface, seed);
+        colour = calculateDirectLight(surface);
 
         if (!cameraMoved)
             finalColour = imageLoad(frameTexture, pixelCoord).rgba;
@@ -275,6 +301,7 @@ void calculateLowResolutionFrame() {
 }
 
 void calculateFullResolutionFrame() {
+    const ivec2 workgroupCoord = ivec2(gl_WorkGroupID.xy);
     const ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
     const ivec2 frameSize = imageSize(frameTexture);
 
@@ -284,6 +311,7 @@ void calculateFullResolutionFrame() {
     
     const vec2 invFrameSize = 1.0 / vec2(frameSize);
     vec2 pixelPos = vec2(pixelCoord) * invFrameSize;
+    vec2 workgroupPos = vec2(workgroupCoord);
 
     // float edgeMagnitude = getEdgeMagnitude(pixelPos, invFrameSize, 2.0);
     
@@ -294,14 +322,17 @@ void calculateFullResolutionFrame() {
 
     // if (edgeMagnitude > 0.0225) {
 
+        pixelSeed = pixelPos;
+        workgroupSeed = workgroupPos;
+
         vec2 seed = pixelPos;
-        pixelPos += nextRandomVec2(seed) * invFrameSize; // jitter sample
+        pixelPos += nextRandomVec2(pixelSeed) * invFrameSize; // jitter sample
         SurfacePoint surface = readSurfacePoint(pixelPos);
 
         if (surface.exists) {
             vec3 colour;
             //calculatePathTracedLighting(colour, surface, seed);
-            colour = calculateDirectLight(vec3(0.0), vec3(0.0), surface, seed);
+            colour = calculateAmbientOcclusion(surface);
 
             finalColour += vec4(colour, 1.0);
         }

@@ -156,6 +156,7 @@ MeshLoader::OBJ::MaterialSet* MeshLoader::OBJ::readMTL(std::string file) {
 	std::string line;
 	while (std::getline(stream, line)) {
 		line = trim(line);
+		info("%s\n", line.c_str());
 
 		if (line.empty()) {
 			continue;
@@ -516,7 +517,7 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 			if (mappedIndex == OBJ::npos) {
 				Mesh::vertex vertex;
 				vertex.position = index.p != OBJ::npos ? positions[index.p] : vec3(0.0);
-				vertex.normal = index.n != OBJ::npos ? normals[index.n] : vec3(0.0);
+				vertex.normal = index.n != OBJ::npos ? normals[index.n] : vec3(NAN);
 				vertex.texture = index.t != OBJ::npos ? textures[index.t] : vec3(0.0);
 				mappedIndex = vertices.size();
 				mappedIndices[index.k] = mappedIndex;
@@ -529,6 +530,13 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 		Mesh::vertex& v0 = vertices[tri.i0];
 		Mesh::vertex& v1 = vertices[tri.i1];
 		Mesh::vertex& v2 = vertices[tri.i2];
+
+		if (isnan(v0.normal.x) || isnan(v1.normal.x) || isnan(v2.normal.x)) {
+			dvec3 faceNormal = normalize(cross(v1.position - v0.position, v2.position - v0.position));
+			v0.normal = faceNormal;
+			v1.normal = faceNormal;
+			v2.normal = faceNormal;
+		}
 
 		vec3 e0 = v1.position - v0.position;
 		vec3 e1 = v2.position - v0.position;

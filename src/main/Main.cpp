@@ -7,6 +7,7 @@
 #include "core/scene/BoundingVolumeHierarchy.h"
 #include "core/renderer/geometry/Mesh.h"
 #include "core/renderer/geometry/MeshLoader.h"
+#include "core/renderer/MaterialManager.h"
 #include "core/renderer/ShaderProgram.h"
 #include "core/renderer/ScreenRenderer.h"
 #include "core/renderer/ShadowMapRenderer.h"
@@ -285,9 +286,28 @@ int start_rasterizer(int argc, char** argv) {
 		//galleryObject->addComponent("gallery_renderer", new RenderComponent("models/gallery/gallery.obj", rasterShader));
 		//Engine::scene()->getRoot()->addChild("gallery_object", galleryObject);
 
+		//SceneObject* conferenceObject = new SceneObject(Transformation(dvec3(0.0, 0.0, 0.0), dquat(), dvec3(0.01)));
+		//conferenceObject->addComponent("conference_renderer", new RenderComponent("models/conference/conference", rasterShader));
+		//Engine::scene()->getRoot()->addChild("conference_object", conferenceObject);
+
 		//SceneObject* breakfastRoomObject = new SceneObject(Transformation(dvec3(0.0, 0.0, 0.0), dquat(), dvec3(1.0)));
 		//breakfastRoomObject->addComponent("breakfastroom_renderer", new RenderComponent("models/breakfast_room/breakfast_room", rasterShader));
 		//Engine::scene()->getRoot()->addChild("breakfastroom_object", breakfastRoomObject);
+		//
+		//MaterialConfiguration windowLightEmissiveMaterial;
+		//windowLightEmissiveMaterial.emission = vec3(10.0, 10.0, 10.0);
+		//int32_t windowLightMaterial = Engine::scene()->getMaterialManager()->loadNamedMaterial("window_light_emissive", windowLightEmissiveMaterial);
+		//Mesh::index i0 = builder->addVertex(dvec3(0.0, 0.0, 0.0), dvec3(-1.0, 0.0, 0.0), dvec3(0.0, 0.0, 1.0), dvec2(0.0, 0.0), windowLightMaterial);
+		//Mesh::index i1 = builder->addVertex(dvec3(0.0, 1.0, 0.0), dvec3(-1.0, 0.0, 0.0), dvec3(0.0, 0.0, 1.0), dvec2(1.0, 0.0), windowLightMaterial);
+		//Mesh::index i2 = builder->addVertex(dvec3(0.0, 1.0, 1.0), dvec3(-1.0, 0.0, 0.0), dvec3(0.0, 0.0, 1.0), dvec2(1.0, 1.0), windowLightMaterial);
+		//Mesh::index i3 = builder->addVertex(dvec3(0.0, 0.0, 1.0), dvec3(-1.0, 0.0, 0.0), dvec3(0.0, 0.0, 1.0), dvec2(0.0, 1.0), windowLightMaterial);
+		//builder->addTriangle(i1, i0, i2);
+		//builder->addTriangle(i2, i0, i3);
+		//Mesh* windowLightMesh = NULL;
+		//builder->build(&windowLightMesh);
+		//SceneObject* windowLightObject = new SceneObject(Transformation(dvec3(0.0, 0.0, 0.0), dquat(), dvec3(1.0, 1.0, 1.0)));
+		//windowLightObject->addComponent("windowlight_renderer", new RenderComponent(windowLightMesh, rasterShader));
+		//Engine::scene()->getRoot()->addChild("windowlight_object", windowLightObject);
 
 		SceneObject* livingRoomObject = new SceneObject(Transformation(dvec3(0.0, 0.0, -10.0)));
 		livingRoomObject->addComponent("livingroom_renderer", new RenderComponent("models/living_room/living_room", rasterShader));

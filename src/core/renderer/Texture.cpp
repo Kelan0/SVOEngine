@@ -61,6 +61,7 @@ bool Texture::setFilterMode(TextureFilter minFilter, TextureFilter magFilter, fl
 	this->bind();
 	glTexParameteri(target.target, GL_TEXTURE_MIN_FILTER, filter.minFilter);
 	glTexParameteri(target.target, GL_TEXTURE_MAG_FILTER, filter.magFilter);
+	glTexParameterf(target.target, GL_TEXTURE_LOD_BIAS, -2.0);
 	if (filter.mipmap) {
 		this->generateMipmap();
 	} else {
@@ -165,9 +166,9 @@ OpenGLTextureFormat Texture::getOpenGLTextureFormat(TextureFormat textureFormat,
 		case TextureFormat::R32_G32_UINT: return OpenGLTextureFormat(GL_RG32UI, b?GL_RG:externalFormat, GL_UNSIGNED_INT);
 		case TextureFormat::R32_G32_SINT: return OpenGLTextureFormat(GL_RG32I, b?GL_RG:externalFormat, GL_INT);
 
-		case TextureFormat::R32_FLOAT: return OpenGLTextureFormat(GL_R32F, b?GL_R:externalFormat, GL_FLOAT);
-		case TextureFormat::R32_UINT: return OpenGLTextureFormat(GL_R32UI, b?GL_R:externalFormat, GL_UNSIGNED_INT);
-		case TextureFormat::R32_SINT: return OpenGLTextureFormat(GL_R32I, b?GL_R:externalFormat, GL_INT);
+		case TextureFormat::R32_FLOAT: return OpenGLTextureFormat(GL_R32F, b?GL_RED:externalFormat, GL_FLOAT);
+		case TextureFormat::R32_UINT: return OpenGLTextureFormat(GL_R32UI, b?GL_RED_INTEGER:externalFormat, GL_UNSIGNED_INT);
+		case TextureFormat::R32_SINT: return OpenGLTextureFormat(GL_R32I, b?GL_RED_INTEGER:externalFormat, GL_INT);
 		case TextureFormat::DEPTH32_FLOAT: return OpenGLTextureFormat(GL_DEPTH_COMPONENT32F, b?GL_DEPTH_COMPONENT:externalFormat, GL_FLOAT);
 		case TextureFormat::DEPTH32_SNORM: return OpenGLTextureFormat(GL_DEPTH_COMPONENT32, b?GL_DEPTH_COMPONENT:externalFormat, GL_UNSIGNED_INT);
 
@@ -191,11 +192,11 @@ OpenGLTextureFormat Texture::getOpenGLTextureFormat(TextureFormat textureFormat,
 		case TextureFormat::R16_G16_UNORM: return OpenGLTextureFormat(GL_RG16, b?GL_RG:externalFormat, GL_UNSIGNED_SHORT);
 		case TextureFormat::R16_G16_SNORM: return OpenGLTextureFormat(GL_RG16_SNORM, b?GL_RG:externalFormat, GL_SHORT);
 
-		case TextureFormat::R16_FLOAT: return OpenGLTextureFormat(GL_R16F, b?GL_R:externalFormat, GL_FLOAT); // GL_HALF_FLOAT ?
-		case TextureFormat::R16_UINT: return OpenGLTextureFormat(GL_R16UI, b?GL_R:externalFormat, GL_UNSIGNED_SHORT);
-		case TextureFormat::R16_SINT: return OpenGLTextureFormat(GL_R16I, b?GL_R:externalFormat, GL_SHORT);
-		case TextureFormat::R16_UNORM: return OpenGLTextureFormat(GL_R16, b?GL_R:externalFormat, GL_UNSIGNED_SHORT);
-		case TextureFormat::R16_SNORM: return OpenGLTextureFormat(GL_R16_SNORM, b?GL_R:externalFormat, GL_SHORT);
+		case TextureFormat::R16_FLOAT: return OpenGLTextureFormat(GL_R16F, b?GL_RED:externalFormat, GL_FLOAT); // GL_HALF_FLOAT ?
+		case TextureFormat::R16_UINT: return OpenGLTextureFormat(GL_R16UI, b?GL_RED_INTEGER:externalFormat, GL_UNSIGNED_SHORT);
+		case TextureFormat::R16_SINT: return OpenGLTextureFormat(GL_R16I, b?GL_RED_INTEGER:externalFormat, GL_SHORT);
+		case TextureFormat::R16_UNORM: return OpenGLTextureFormat(GL_R16, b?GL_RED:externalFormat, GL_UNSIGNED_SHORT);
+		case TextureFormat::R16_SNORM: return OpenGLTextureFormat(GL_R16_SNORM, b?GL_RED:externalFormat, GL_SHORT);
 		case TextureFormat::DEPTH16_SNORM: return OpenGLTextureFormat(GL_DEPTH_COMPONENT16, b?GL_DEPTH_COMPONENT:externalFormat, GL_UNSIGNED_SHORT);
 
 		case TextureFormat::R8_G8_B8_A8_UINT: return OpenGLTextureFormat(GL_RGBA8UI, b?GL_RGBA:externalFormat, GL_UNSIGNED_BYTE);
@@ -213,10 +214,10 @@ OpenGLTextureFormat Texture::getOpenGLTextureFormat(TextureFormat textureFormat,
 		case TextureFormat::R8_G8_UNORM: return OpenGLTextureFormat(GL_RG8, b?GL_RG:externalFormat, GL_UNSIGNED_BYTE);
 		case TextureFormat::R8_G8_SNORM: return OpenGLTextureFormat(GL_RG8_SNORM, b?GL_RG:externalFormat, GL_BYTE);
 
-		case TextureFormat::R8_UINT: return OpenGLTextureFormat(GL_R8UI, b?GL_R:externalFormat, GL_UNSIGNED_BYTE);
-		case TextureFormat::R8_SINT: return OpenGLTextureFormat(GL_R8I, b?GL_R:externalFormat, GL_BYTE);
-		case TextureFormat::R8_UNORM: return OpenGLTextureFormat(GL_R8, b?GL_R:externalFormat, GL_UNSIGNED_BYTE);
-		case TextureFormat::R8_SNORM: return OpenGLTextureFormat(GL_R8_SNORM, b?GL_R:externalFormat, GL_BYTE);
+		case TextureFormat::R8_UINT: return OpenGLTextureFormat(GL_R8UI, b?GL_RED_INTEGER:externalFormat, GL_UNSIGNED_BYTE);
+		case TextureFormat::R8_SINT: return OpenGLTextureFormat(GL_R8I, b?GL_RED_INTEGER:externalFormat, GL_BYTE);
+		case TextureFormat::R8_UNORM: return OpenGLTextureFormat(GL_R8, b?GL_RED:externalFormat, GL_UNSIGNED_BYTE);
+		case TextureFormat::R8_SNORM: return OpenGLTextureFormat(GL_R8_SNORM, b?GL_RED:externalFormat, GL_BYTE);
 
 		default: return OpenGLTextureFormat();
 	}

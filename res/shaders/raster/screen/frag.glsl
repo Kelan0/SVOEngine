@@ -44,15 +44,23 @@ uniform bool transparentRenderPass;
 // SCREEN RENDERER UNIFORMS
 uniform int renderGBufferMode;
 uniform vec2 screenResolution;
-uniform uvec2 albedoTexture;
-uniform uvec2 emissionTexture;
 uniform uvec2 normalTexture;
-uniform uvec2 roughnessTexture;
-uniform uvec2 metalnessTexture;
-uniform uvec2 ambientOcclusionTexture;
-uniform uvec2 irradianceTexture;
-uniform uvec2 reflectionTexture;
+uniform uvec2 tangentTexture;
+uniform uvec2 textureCoordTexture;
+uniform uvec2 materialIndexTexture;
 uniform uvec2 depthTexture;
+
+// uniform uvec2 albedoTexture;
+// uniform uvec2 emissionTexture;
+// uniform uvec2 normalTexture;
+// uniform uvec2 roughnessTexture;
+// uniform uvec2 metalnessTexture;
+// uniform uvec2 ambientOcclusionTexture;
+// uniform uvec2 irradianceTexture;
+// uniform uvec2 reflectionTexture;
+// uniform uvec2 transmissionTexture;
+// uniform uvec2 depthTexture;
+
 uniform uvec2 prevDepthTexture;
 uniform uvec2 skyboxEnvironmentTexture;
 uniform uvec2 BRDFIntegrationMap;
@@ -68,8 +76,12 @@ layout (binding = 1, std430) buffer NodeBuffer {
 layout (binding = 2) uniform atomic_uint nodeCounter;
 uniform int allocatedFragmentNodes;
 
-layout (binding = 3, r16ui) uniform uimage2D reprojectionHistoryTexture;
+layout (binding = 3, r16ui) uniform uimage2D prevReprojectionHistoryTexture;
+layout (binding = 4, r16ui) uniform uimage2D reprojectionHistoryTexture;
 
+layout (binding = 4, std430) buffer MaterialBuffer {
+    PackedMaterial materialBuffer[];
+};
 
 // TODO: investigate if texture storage (TBO/regular texture) would be faster for BVH or geometry storage
 
@@ -85,17 +97,34 @@ uniform int spotLightCount;
 out vec4 outColour;
 
 SurfacePoint readOpaqueSurfacePoint(vec2 coord) {
-    Fragment fragment;
-    fragment.depth = texture(sampler2D(depthTexture), coord).x;
-    fragment.albedo = texture(sampler2D(albedoTexture), coord).rgb;
-    fragment.emission = texture(sampler2D(emissionTexture), coord).rgb;
-    fragment.normal = decodeNormal(texture(sampler2D(normalTexture), coord).rg);
-    fragment.roughness = texture(sampler2D(roughnessTexture), coord).r;
-    fragment.metalness = texture(sampler2D(metalnessTexture), coord).r;
-    fragment.ambientOcclusion = texture(sampler2D(ambientOcclusionTexture), coord).r;
-    fragment.irradiance = texture(sampler2D(irradianceTexture), coord).rgb;
-    fragment.reflection = texture(sampler2D(reflectionTexture), coord).rgb;
-    fragment.transmission = vec3(0.0);
+    vec3 normal = decodeNormal(texture(sampler2D(normalTexture), coord).rg);
+    vec3 tangent = decodeNormal(texture(sampler2D(tangentTexture), coord).rg);
+    vec2 textureCoord = texture(sampler2D(textureCoordTexture), coord).xy;
+    int materialIndex = texture(isampler2D(materialIndexTexture), coord).x;
+    float depth = texture(sampler2D(depthTexture), coord).x;
+    
+    Material material;
+    bool hasMaterial = false;
+    bool hasTangent = dot(tangent, tangent) > 1e-4; // tangent is not zero-length
+
+    if (materialIndex >= 0) {
+        material = unpackMaterial(materialBuffer[materialIndex]);
+        hasMaterial = true;
+    }
+
+    Fragment fragment = calculateFragment(material, vec3(0.0), normal, tangent, textureCoord, depth, hasTangent, hasMaterial);
+
+    // Fragment fragment;
+    // fragment.depth = texture(sampler2D(depthTexture), coord).x;
+    // fragment.albedo = texture(sampler2D(albedoTexture), coord).rgb;
+    // fragment.emission = texture(sampler2D(emissionTexture), coord).rgb;
+    // fragment.normal = decodeNormal(texture(sampler2D(normalTexture), coord).rg);
+    // fragment.roughness = texture(sampler2D(roughnessTexture), coord).r;
+    // fragment.metalness = texture(sampler2D(metalnessTexture), coord).r;
+    // fragment.ambientOcclusion = texture(sampler2D(ambientOcclusionTexture), coord).r;
+    // fragment.irradiance = texture(sampler2D(irradianceTexture), coord).rgb;
+    // fragment.reflection = texture(sampler2D(reflectionTexture), coord).rgb;
+    // fragment.transmission = texture(sampler2D(transmissionTexture), coord).rgb;
 
     return fragmentToSurfacePoint(fragment, coord, invViewProjectionMatrix);
 }
@@ -278,6 +307,40 @@ float getEdgeMagnitude(vec2 coord, vec2 pixelSize, float edgeRange) {
 //     return f0 + f1;
 // }
 
+float reprojectPixel(in SurfacePoint surface, in ivec2 currPixel, inout ivec2 prevPixel, inout uint reprojectionCount) {
+    vec2 invResolution = 1.0 / vec2(screenResolution);
+    float currDepth = texelFetch(sampler2D(depthTexture), currPixel, 0).x;
+    vec3 currPosition = depthToWorldPosition(currDepth, vec2(currPixel + 0.5) * invResolution, invViewProjectionMatrix);
+    vec3 prevProjection = projectWorldPosition(currPosition, prevViewProjectionMatrix);
+
+    float diff = 1.0;
+    prevPixel = ivec2(prevProjection.xy * screenResolution);
+
+    if (prevProjection.x >= 0.0 && prevProjection.y >= 0.0 && prevProjection.x < 1.0 && prevProjection.y < 1.0) {
+        float prevDepth = texture(sampler2D(prevDepthTexture), prevProjection.xy).x;
+        vec3 prevPosition = depthToWorldPosition(prevDepth, prevProjection.xy, inverse(prevViewProjectionMatrix));
+        vec3 delta = abs(prevPosition - currPosition);
+        diff = max(delta.x, max(delta.y, delta.z));
+    }
+
+    // float NDotV = 1.0 - dot(surface.normal, normalize(cameraPosition - surface.position));
+    // float NDotV2 = NDotV * NDotV;
+    // float NDotV4 = NDotV2 * NDotV2;
+
+    float NDotV4 = 0.0;
+
+    if (diff > mix(0.01, 0.1, NDotV4)) {
+        reprojectionCount = 0u;
+    } else {
+        reprojectionCount = imageLoad(prevReprojectionHistoryTexture, prevPixel).x;
+    }
+
+    ++reprojectionCount;
+    
+    imageStore(reprojectionHistoryTexture, currPixel, uvec4(reprojectionCount));
+    return diff;
+}
+
 void main() {
     ivec2 pixel = ivec2(fs_vertexTexture * screenSize);
 
@@ -287,9 +350,9 @@ void main() {
     vec3 finalColour = texture(samplerCube(skyboxEnvironmentTexture), pixelDirection.xyz).rgb;
 
     if (surface.exists) {
-        calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
-        finalColour += surface.emission;
-        // finalColour = vec3(1.0);
+        // calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
+        // finalColour += surface.emission;
+        finalColour = vec3(1.0);
         vec4 raytracedFrameColour = texture2D(sampler2D(raytracedFrame), fs_vertexTexture);
 
         if (raytracedFrameColour.a > 0.0) {
@@ -306,6 +369,19 @@ void main() {
     // }
 
     finalColour = pow(finalColour / (finalColour + vec3(1.0)), vec3(1.0/2.2)); 
+    ivec2 prevPixel = pixel;
+    uint count = 0u;
+    float diff = reprojectPixel(surface, pixel, prevPixel, count);
 
+    // if (count == 1u) {
+    //     finalColour = vec3(0.0, 1.0, 0.2);
+    // } else {
+    //     finalColour = vec3(1.0 - 1.0 / (1.0 + 0.1 * float(count)));
+    // }
+
+    // vec2 v = vec2(pixel + 0.5) / vec2(screenSize);
+    // vec3 currPosition = depthToWorldPosition(texture(sampler2D(depthTexture), v).x, v, invViewProjectionMatrix);
+    // finalColour = abs(currPosition - surface.position) * 100.0;
+    finalColour = heatmap(float(count) / 300.0);
     outColour = vec4(finalColour, 1.0);
 }

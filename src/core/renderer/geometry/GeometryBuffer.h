@@ -16,6 +16,11 @@ struct GeometryRegion {
 	uint64_t triangleCount;
 };
 
+struct EmissiveSurfaceInfo {
+	uint32_t index;
+	float area;
+};
+
 class GeometryBuffer {
 public:
 	GeometryBuffer();

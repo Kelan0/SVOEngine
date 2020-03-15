@@ -488,9 +488,19 @@ MeshLoader::OBJ* MeshLoader::OBJ::readOBJ(std::string file, std::string mtlDir) 
 		objects.push_back(currentObject);
 	}
 
+	OBJ::calculateTangents(vertices, triangles);
+
 	obj->m_objects.swap(objects);
 	obj->m_vertices.swap(vertices);
 	obj->m_triangles.swap(triangles);
+
+	////debug
+	//for (int i = 0; i < obj->m_vertices.size(); ++i) {
+	//	double len = length(obj->m_vertices[i].tangent);
+	//	if (abs(len - 1.0) > 1e-9) {
+	//		info("%d  %f\n", i, len);
+	//	}
+	//}
 
 	uint64_t t1 = Engine::instance()->getCurrentTime();
 	info("Took %f seconds to load OBJ file \"%s\"\n", (t1 - t0) / 1000000000.0, file.c_str());
@@ -519,6 +529,7 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 				vertex.position = index.p != OBJ::npos ? positions[index.p] : vec3(0.0);
 				vertex.normal = index.n != OBJ::npos ? normals[index.n] : vec3(NAN);
 				vertex.texture = index.t != OBJ::npos ? textures[index.t] : vec3(0.0);
+				vertex.tangent = vec3(0.0);
 				mappedIndex = vertices.size();
 				mappedIndices[index.k] = mappedIndex;
 				vertices.push_back(vertex);
@@ -538,40 +549,54 @@ void MeshLoader::OBJ::compileObject(Object* currentObject, std::vector<Mesh::ver
 			v2.normal = faceNormal;
 		}
 
-		vec3 e0 = v1.position - v0.position;
-		vec3 e1 = v2.position - v0.position;
-
-		double du0 = (double) v1.texture.x - v0.texture.x;
-		double dv0 = (double) v1.texture.y - v0.texture.y;
-		double du1 = (double) v2.texture.x - v0.texture.x;
-		double dv1 = (double) v2.texture.y - v0.texture.y;
-
-		double f = 1.0 / (du0 * dv1 - du1 * dv0);
-
-		vec3 tangent;
-		tangent.x = f * (dv1 * e0.x - dv0 * e1.x);
-		tangent.y = f * (dv1 * e0.y - dv0 * e1.y);
-		tangent.z = f * (dv1 * e0.z - dv0 * e1.z);
-
-		v0.tangent += tangent;
-		v1.tangent += tangent;
-		v2.tangent += tangent;
-
 		triangles.push_back(tri);
 	}
 
 	currentObject->m_triangleEndIndex = triangles.size();
 
-	// normalize tangents of all added vertices
-	for (int i = currentObject->m_triangleBeginIndex; i < currentObject->m_triangleEndIndex; i++) {
-		Mesh::triangle& tri = triangles[i];
-		vertices[tri.i0].tangent = normalize(vertices[tri.i0].tangent);
-		vertices[tri.i1].tangent = normalize(vertices[tri.i1].tangent);
-		vertices[tri.i2].tangent = normalize(vertices[tri.i2].tangent);
-	}
-
 	uint64_t t1 = Engine::instance()->getCurrentTime();
 	info("- Took %f msec\n", (t1 - t0) / 1000000.0);
+}
+
+void MeshLoader::OBJ::calculateTangents(std::vector<Mesh::vertex>& vertices, std::vector<Mesh::triangle>& triangles) {
+	for (int i = 0; i < triangles.size(); ++i) {
+		Mesh::triangle& tri = triangles[i];
+		Mesh::vertex& v0 = vertices[tri.i0];
+		Mesh::vertex& v1 = vertices[tri.i1];
+		Mesh::vertex& v2 = vertices[tri.i2];
+
+		vec3 e0 = v1.position - v0.position;
+		vec3 e1 = v2.position - v0.position;
+
+		double du0 = (double)v1.texture.x - v0.texture.x;
+		double dv0 = (double)v1.texture.y - v0.texture.y;
+		double du1 = (double)v2.texture.x - v0.texture.x;
+		double dv1 = (double)v2.texture.y - v0.texture.y;
+		double f = du0 * dv1 - du1 * dv0;
+
+		if (abs(f) > 1e-9) {
+			f = 1.0 / f;
+			vec3 tangent;
+			tangent.x = f * (dv1 * e0.x - dv0 * e1.x);
+			tangent.y = f * (dv1 * e0.y - dv0 * e1.y);
+			tangent.z = f * (dv1 * e0.z - dv0 * e1.z);
+			tangent = normalize(tangent);
+			v0.tangent += tangent;
+			v1.tangent += tangent;
+			v2.tangent += tangent;
+		//} else {
+		//	v0.tangent = vec3(-1);
+		//	v1.tangent = vec3(-1);
+		//	v2.tangent = vec3(-1);
+		}
+	}
+
+	for (int i = 0; i < vertices.size(); i++) {
+		double len = length(vertices[i].tangent);
+		if (len > 1e-9) {
+			vertices[i].tangent /= len;
+		}
+	}
 }
 
 MeshLoader::OBJ* MeshLoader::OBJ::readMDL(std::string file, std::string mtlDir) {
@@ -1163,12 +1188,17 @@ MaterialConfiguration* MeshLoader::OBJ::MaterialSet::createMaterialConfiguration
 
 	if (!material.diffuseMapPath.empty()) configuration->albedoMapPath = mtlDir + material.diffuseMapPath;
 
+	if (!material.bumpMapPath.empty()) configuration->normalMapPath = mtlDir + material.bumpMapPath;
 	if (!material.normalMapPath.empty()) configuration->normalMapPath = mtlDir + material.normalMapPath;
-	else if (!material.bumpMapPath.empty()) configuration->normalMapPath = mtlDir + material.bumpMapPath;
 
 	if (!material.specularMapPath.empty()) {
 		configuration->roughnessMapPath = mtlDir + material.specularMapPath;
 		configuration->roughnessInverted = true;
+	}
+
+	if (!material.roughnessMapPath.empty()) {
+		configuration->roughnessMapPath = mtlDir + material.roughnessMapPath;
+		configuration->roughnessInverted = false;
 	}
 
 	if (!material.alphaMapPath.empty()) {

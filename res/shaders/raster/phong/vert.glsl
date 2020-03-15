@@ -30,7 +30,7 @@ void main() {
     vs_out.worldTangent = worldTangent.xyz;
     vs_out.vertexTexture = vs_vertexTexture;
     vs_out.projectedDepth = projectedPosition.z / projectedPosition.w;
-    vs_out.hasTangent = dot(vs_vertexTangent, vs_vertexTangent) > 1e-2 ? 1 : 0; // tangent is non-zero vector
+    vs_out.hasTangent = dot(worldTangent.xyz, worldTangent.xyz) > 1e-2 ? 1 : 0; // tangent is non-zero vector
     vs_out.materialIndex = vs_vertexMaterial;
 
     gl_Position = projectedPosition;

@@ -46,6 +46,17 @@ struct BVHNode {
 	uint primitiveCount_splitAxis_flags;
 };
 
+struct EmissiveSurfaceInfo {
+    uint index;
+    float area;
+};
+
+struct EmissiveSample {
+    vec3 position;
+    float area;
+    Fragment surfaceFragment;
+};
+
 layout (binding = VERTEX_BUFFER_BINDING, std430) buffer VertexBuffer {
    RawVertex vertices[];
 };
@@ -110,13 +121,12 @@ void getTriangleVertices(in uint triangleIndex, out Vertex v0, out Vertex v1, ou
     v2 = getVertex(triangle.i2);
 }
 
-Fragment getInterpolatedIntersectionFragment(IntersectionInfo intersection) {
-    vec3 position = mat3x3(intersection.v0.position, intersection.v1.position, intersection.v2.position) * intersection.barycentric;
-    vec3 normal = mat3x3(intersection.v0.normal, intersection.v1.normal, intersection.v2.normal) * intersection.barycentric;
-    vec3 tangent = mat3x3(intersection.v0.tangent, intersection.v1.tangent, intersection.v2.tangent) * intersection.barycentric;
-    vec2 texture = mat3x2(intersection.v0.texture, intersection.v1.texture, intersection.v2.texture) * intersection.barycentric;
-    uint materialIndex = intersection.v0.material;
-    float depth = intersection.dist;
+Fragment getInterpolatedTriangleFragment(vec3 barycentric, Vertex v0, Vertex v1, Vertex v2, float depth = 0.5) {
+    vec3 position = mat3x3(v0.position, v1.position, v2.position) * barycentric;
+    vec3 normal = mat3x3(v0.normal, v1.normal, v2.normal) * barycentric;
+    vec3 tangent = mat3x3(v0.tangent, v1.tangent, v2.tangent) * barycentric;
+    vec2 texture = mat3x2(v0.texture, v1.texture, v2.texture) * barycentric;
+    uint materialIndex = v0.material;
 
     bool hasTangent = dot(tangent, tangent) > 1e-3;
     bool hasMaterial = materialIndex >= 0;
@@ -129,14 +139,46 @@ Fragment getInterpolatedIntersectionFragment(IntersectionInfo intersection) {
     return calculateFragment(material, position, normal, tangent, texture, depth, hasTangent, hasMaterial);
 }
 
-vec3 getNextEmissiveSampleDirection(inout vec2 seed, vec3 origin) {
+Fragment getInterpolatedIntersectionFragment(IntersectionInfo intersection) {
+    return getInterpolatedTriangleFragment(intersection.barycentric, intersection.v0, intersection.v1, intersection.v2, intersection.dist);
+}
+
+vec4 getNextEmissiveSampleDirection(inout vec2 seed, in vec3 origin) {
+    // Select random emissive triangle, select uniform random point within triangle, get direction to sample point
     uint sampleTriangleIndex = emissiveTriangleBuffer[uint(nextRandom(seed) * emissiveTriangleCount)];
     
     Vertex v0, v1, v2;
     getTriangleVertices(sampleTriangleIndex, v0, v1, v2);
+    
+    vec3 samplePosition = getRandomTrianglePoint(seed, v0.position, v1.position, v2.position);
+    float sampleSurfaceArea = getTriangleSurfaceArea(v0.position, v1.position, v2.position);
+    return vec4(normalize(samplePosition - origin), sampleSurfaceArea);
+}
 
-    vec3 samplePoint = getRandomTrianglePoint(seed, v0.position, v1.position, v2.position);
-    return normalize(samplePoint - origin);
+EmissiveSample getNextEmissiveSample(inout vec2 seed) {
+    uint sampleTriangleIndex = emissiveTriangleBuffer[uint(nextRandom(seed) * emissiveTriangleCount)];
+    
+    Vertex v0, v1, v2;
+    getTriangleVertices(sampleTriangleIndex, v0, v1, v2);
+    
+    // vec3 normal = cross(v1.position - v0.position, v2.position - v0.position);
+    // float area = length(n);
+    // normal /= area; // avoid two square roots.
+    // area *= 0.5;
+    
+    vec3 barycentric = getRandomBarycentricCoord(seed);
+    Fragment fragment = getInterpolatedTriangleFragment(barycentric, v0, v1, v2);
+    
+    EmissiveSample emissiveSample;
+    emissiveSample.position = mat3x3(v0.position, v1.position, v2.position) * barycentric;
+    emissiveSample.area = getTriangleSurfaceArea(v0.position, v1.position, v2.position);
+    emissiveSample.surfaceFragment = fragment;
+    return emissiveSample;
+}
+
+float powerHeuristic(float a, float b) {
+    float a2 = a * a;
+    return a2 / (b * b + a2);
 }
 
 #endif

@@ -314,6 +314,7 @@ Material unpackMaterial(PackedMaterial packedMaterial) {
     return material;
 }
 
+// unprojectWorldPosition
 vec3 depthToWorldPosition(float depth, vec2 coord, mat4 invViewProjectionMatrix) {
     vec4 point;
     point.xy = coord * 2.0 - 1.0;
@@ -321,6 +322,11 @@ vec3 depthToWorldPosition(float depth, vec2 coord, mat4 invViewProjectionMatrix)
     point.w = 1.0;
     point = invViewProjectionMatrix * point;
     return point.xyz / point.w;
+}
+
+vec3 projectWorldPosition(vec3 worldPosition, mat4 viewProjectionMatrix) {
+    vec4 point = viewProjectionMatrix * vec4(worldPosition, 1.0);
+    return (point.xyz / point.w) * 0.5 + 0.5;
 }
 
 SurfacePoint packedFragmentToSurfacePoint(PackedFragment packedFragment, vec2 coord, mat4 invViewProjectionMatrix) {
@@ -417,6 +423,7 @@ float getLinearDepth(float depth, float nearPlane, float farPlane) {
 
 vec3 calculateNormalMap(in vec2 texture, in sampler2D normalMap, in vec3 surfaceTangent, in vec3 surfaceNormal) {
     vec3 mappedNormal = texture2D(normalMap, texture).xyz * 2.0 - 1.0;
+    //vec3 mappedNormal = texelFetch(normalMap, ivec2(fract(texture) * textureSize(normalMap, 0)), 0).xyz * 2.0 - 1.0;
 
     // TODO: handle BUMP map better
     bool grayscale = abs(mappedNormal.r - mappedNormal.g) < 1e-4 && abs(mappedNormal.r - mappedNormal.b) < 1e-4; // r g b all same value.
@@ -472,7 +479,7 @@ Fragment calculateFragment(Material material, vec3 position, vec3 normal, vec3 t
             fragment.roughness = material.roughness;
             fragment.metalness = material.metalness;
             
-            if (material.hasNormalMap && hasTangent) 
+            if (material.hasNormalMap) 
                 fragment.normal = calculateNormalMap(texture, material.normalMap, normalize(tangent), fragment.normal);
             
             if (material.hasRoughnessMap)
@@ -635,7 +642,23 @@ vec3 getTriangleWorldPoint(vec2 Xi, vec3 v0, vec3 v1, vec3 v2) {
     return v0 + (((v1 - v0) * u) + ((v2 - v0) * v));
 }
 
+vec3 getRandomBarycentricCoord(vec2 seed) {
+    float u = nextRandom(seed);
+    float v = nextRandom(seed);
+
+    if (u + v >= 1.0) {
+        u = 1.0 - u;
+        v = 1.0 - v;
+    }
+
+    return vec3(1.0 - u - v, u, v);
+}
+
 vec3 getRandomTrianglePoint(inout vec2 seed, vec3 v0, vec3 v1, vec3 v2) {
     return getTriangleWorldPoint(nextRandomVec2(seed), v0, v1, v2);
+}
+
+float getTriangleSurfaceArea(vec3 v0, vec3 v1, vec3 v2) {
+    return 0.5 * length(cross(v1 - v0, v2 - v0));
 }
 #endif

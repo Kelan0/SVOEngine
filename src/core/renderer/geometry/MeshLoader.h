@@ -202,6 +202,8 @@ namespace MeshLoader {
 
 		static void compileObject(Object* currentObject, std::vector<Mesh::vertex>& vertices, std::vector<Mesh::triangle>& triangles, std::vector<face>& faces, std::vector<vec3>& positions, std::vector<vec2>& textures, std::vector<vec3>& normals, std::unordered_map<uvec3, uint32_t>& mappedIndices);
 
+		static void calculateTangents(std::vector<Mesh::vertex>& vertices, std::vector<Mesh::triangle>& triangles);
+
 		std::vector<Object*> m_objects;
 		std::vector<MaterialSet*> m_materialSets;
 		std::vector<Mesh::vertex> m_vertices;

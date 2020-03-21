@@ -30,7 +30,8 @@ private:
 	uint32_t m_renderHeight;
 
 	Texture2D* m_lowResolutionFrameTexture;
-	Texture2D* m_FullResolutionFrameTexture;
+	Texture2D* m_fullResolutionFrameTexture;
+	Texture2D* m_prevFullResolutionFrameTexture;
 
 	ShaderProgram* m_raytraceShader;
 };

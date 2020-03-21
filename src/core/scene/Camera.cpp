@@ -20,6 +20,12 @@ Camera::Camera(double fov, double aspect, double near, double far) {
 	m_screenRays = dmat4x3(0.0);
 }
 
+void Camera::preRender(double dt, double partialTicks) {
+	m_prevTransform = Transformation(m_transform);
+	m_prevScreenRays = dmat4x3(m_screenRays);
+	m_prevViewProjectionMatrix = dmat4(m_viewProjectionMatrix);
+}
+
 void Camera::render(double dt, double partialTicks) {
 	dvec3 position = m_transform.getTranslation();
 	dmat3 axis = m_transform.getAxisVectors();
@@ -40,7 +46,6 @@ void Camera::render(double dt, double partialTicks) {
 			m_projectionMatrix = perspective(m_fov, m_aspect, m_near, m_far);
 		}
 
-		m_prevViewProjectionMatrix = m_viewProjectionMatrix;
 		m_viewProjectionMatrix = m_projectionMatrix * m_viewMatrix;
 		m_invViewProjectionMatrix = inverse(m_viewProjectionMatrix);
 
@@ -89,6 +94,7 @@ void Camera::render(double dt, double partialTicks) {
 
 void Camera::applyUniforms(ShaderProgram* shaderProgram) {
 	shaderProgram->setUniform("cameraRays", m_screenRays);
+	shaderProgram->setUniform("prevCameraRays", m_prevScreenRays);
 	shaderProgram->setUniform("viewMatrix", m_viewMatrix);
 	shaderProgram->setUniform("invViewMatrix", inverse(m_viewMatrix));
 	shaderProgram->setUniform("projectionMatrix", m_projectionMatrix);
@@ -97,6 +103,7 @@ void Camera::applyUniforms(ShaderProgram* shaderProgram) {
 	shaderProgram->setUniform("invViewProjectionMatrix", m_invViewProjectionMatrix);
 	shaderProgram->setUniform("prevViewProjectionMatrix", m_prevViewProjectionMatrix);
 	shaderProgram->setUniform("cameraPosition", m_transform.getTranslation());
+	shaderProgram->setUniform("prevCameraPosition", m_prevTransform.getTranslation());
 	shaderProgram->setUniform("nearPlane", (float) m_near);
 	shaderProgram->setUniform("farPlane", (float) m_far);
 	shaderProgram->setUniform("cameraMoved", m_cameraMoved);

@@ -59,11 +59,21 @@ public:
 
 	Texture* getTangentTexture() const;
 
+	Texture* getVelocityTexture() const;
+
 	Texture* getTextureCoordTexture() const;
 
 	Texture* getMaterialIndexTexture() const;
 
+	Texture* getLinearDepthTexture() const;
+
 	Texture* getDepthTexture() const;
+
+	Texture* getPrevTextureCoordTexture() const;
+
+	Texture* getPrevMaterialIndexTexture() const;
+
+	Texture* getPrevLinearDepthTexture() const;
 
 	Texture* getPrevDepthTexture() const;
 
@@ -71,35 +81,11 @@ public:
 
 	Texture* getPrevReprojectionHistoryTexture() const;
 
-	//Texture* getAlbedoTexture() const;
-	//
-	//Texture* getEmissionTexture() const;
-	//
-	//Texture* getNormalTexture() const;
-	//
-	//Texture* getRoughnessTexture() const;
-	//
-	//Texture* getMetalnessTexture() const;
-	//
-	//Texture* getAmbientOcclusionTexture() const;
-	//
-	//Texture* getIrradianceTexture() const;
-	//
-	//Texture* getReflectionTexture() const;
-	//
-	//Texture* getTransmissionTexture() const;
-	//
-	//Texture* getDepthTexture() const;
-	//
-	//Texture* getPrevDepthTexture() const;
-	//
-	//Texture* getReprojectionHistoryTexture() const;
+	uint32_t getFrameCount() const;
 
 	static void addFragmentOutputs(ShaderProgram* shaderProgram);
 
 	uint32_t getGBufferTextureCount() const;
-
-	//LayeredDepthBuffer* getLayeredDepthBuffer();
 
 	Framebuffer* t_cubeDepthFramebuffer;
 	Texture* t_cubeDepthTexture;
@@ -108,31 +94,25 @@ protected:
 	Framebuffer* m_framebuffer;
 	Texture* m_normalTexture;
 	Texture* m_tangentTexture;
+	Texture* m_velocityTexture;
 	Texture* m_textureCoordTexture;
 	Texture* m_materialIndexTexture;
+	Texture* m_linearDepthTexture;
 	Texture* m_depthTexture;
+
+	Texture* m_prevTextureCoordTexture;
+	Texture* m_prevMaterialIndexTexture;
+	Texture* m_prevLinearDepthTexture;
 	Texture* m_prevDepthTexture;
+
 	Texture* m_prevReprojectionHistoryTexture;
 	Texture* m_reprojectionHistoryTexture;
 
-	//Texture* m_albedoTexture;
-	//Texture* m_emissionTexture;
-	//Texture* m_normalTexture;
-	//Texture* m_roughnessTexture;
-	//Texture* m_metalnessTexture;
-	//Texture* m_ambientOcclusionTexture;
-	//Texture* m_irradianceTexture;
-	//Texture* m_reflectionTexture;
-	//Texture* m_transmissionTexture;
-	//Texture* m_depthTexture;
-	//Texture* m_prevDepthTexture;
-	//Texture* m_reprojectionHistoryTexture;
+	uint32_t m_frameCount;
 
 	uint32_t m_pixelNodeHeadTexture;
 	uint32_t m_pixelNodeBuffer;
 	uint32_t m_pixelNodeCounter;
-
-	//LayeredDepthBuffer* m_layeredDepthBuffer;
 
 	ShaderProgram* m_screenShader;
 	uint32_t m_fullscreenQuadVAO;

@@ -378,6 +378,8 @@ void SceneGraph::render(double dt, double partialTicks) {
 		m_camera->setAspect(Engine::instance()->getWindowAspectRatio());
 	}
 
+	m_camera->preRender(dt, partialTicks);
+
 	if (m_controllerEnabled) {
 		m_controller->update(dt, partialTicks);
 		m_controller->applyCamera(m_camera);

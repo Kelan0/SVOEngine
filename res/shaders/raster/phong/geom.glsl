@@ -6,7 +6,8 @@ in VertexData {
     vec3 worldNormal;
     vec3 worldTangent;
     vec2 vertexTexture;
-    float projectedDepth;
+    vec4 projectedPosition;
+    vec4 prevProjectedPosition;
     flat int hasTangent;
     flat int materialIndex;
 } gs_in[];
@@ -16,7 +17,8 @@ out VertexData {
     vec3 worldNormal;
     vec3 worldTangent;
     vec2 vertexTexture;
-    float projectedDepth;
+    vec4 projectedPosition;
+    vec4 prevProjectedPosition;
     flat int hasTangent;
     flat int materialIndex;
 } gs_out;
@@ -30,7 +32,8 @@ void main() {
             gs_out.worldNormal = gs_in[i].worldNormal;
             gs_out.worldTangent = gs_in[i].worldTangent;
             gs_out.vertexTexture = gs_in[i].vertexTexture;
-            gs_out.projectedDepth = gs_in[i].projectedDepth;
+            gs_out.projectedPosition = gs_in[i].projectedPosition;
+            gs_out.prevProjectedPosition = gs_in[i].prevProjectedPosition;
             gs_out.hasTangent = gs_in[i].hasTangent;
             gs_out.materialIndex = gs_in[i].materialIndex;
             gl_Position = gl_in[i].gl_Position;

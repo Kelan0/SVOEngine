@@ -23,6 +23,7 @@ in vec2 fs_vertexTexture;
 
 // CAMERA UNIFORMS
 uniform mat4x3 cameraRays;
+uniform mat4x3 prevCameraRays;
 uniform mat4 viewMatrix;
 uniform mat4 invViewMatrix;
 uniform mat4 projectionMatrix;
@@ -31,6 +32,7 @@ uniform mat4 viewProjectionMatrix;
 uniform mat4 invViewProjectionMatrix;
 uniform mat4 prevViewProjectionMatrix;
 uniform vec3 cameraPosition;
+uniform vec3 prevCameraPosition;
 uniform float nearPlane;
 uniform float farPlane;
 
@@ -46,22 +48,17 @@ uniform int renderGBufferMode;
 uniform vec2 screenResolution;
 uniform uvec2 normalTexture;
 uniform uvec2 tangentTexture;
+uniform uvec2 velocityTexture;
 uniform uvec2 textureCoordTexture;
 uniform uvec2 materialIndexTexture;
+uniform uvec2 linearDepthTexture;
 uniform uvec2 depthTexture;
 
-// uniform uvec2 albedoTexture;
-// uniform uvec2 emissionTexture;
-// uniform uvec2 normalTexture;
-// uniform uvec2 roughnessTexture;
-// uniform uvec2 metalnessTexture;
-// uniform uvec2 ambientOcclusionTexture;
-// uniform uvec2 irradianceTexture;
-// uniform uvec2 reflectionTexture;
-// uniform uvec2 transmissionTexture;
-// uniform uvec2 depthTexture;
-
+uniform uvec2 prevTextureCoordTexture;
+uniform uvec2 prevMaterialIndexTexture;
+uniform uvec2 prevLinearDepthTexture;
 uniform uvec2 prevDepthTexture;
+
 uniform uvec2 skyboxEnvironmentTexture;
 uniform uvec2 BRDFIntegrationMap;
 uniform uvec2 pointLightIcon;
@@ -307,37 +304,91 @@ float getEdgeMagnitude(vec2 coord, vec2 pixelSize, float edgeRange) {
 //     return f0 + f1;
 // }
 
-float reprojectPixel(in SurfacePoint surface, in ivec2 currPixel, inout ivec2 prevPixel, inout uint reprojectionCount) {
-    vec2 invResolution = 1.0 / vec2(screenResolution);
-    float currDepth = texelFetch(sampler2D(depthTexture), currPixel, 0).x;
-    vec3 currPosition = depthToWorldPosition(currDepth, vec2(currPixel + 0.5) * invResolution, invViewProjectionMatrix);
-    vec3 prevProjection = projectWorldPosition(currPosition, prevViewProjectionMatrix);
+// float reprojectPixel(in SurfacePoint surface, in ivec2 currPixel, inout ivec2 prevPixel, inout uint reprojectionCount) {
+//     vec2 invResolution = 1.0 / vec2(screenResolution);
+//     float currDepth = texelFetch(sampler2D(depthTexture), currPixel, 0).x;
+//     vec3 currPosition = depthToWorldPosition(currDepth, vec2(currPixel + 0.5) * invResolution, invViewProjectionMatrix);
+//     vec3 prevProjection = projectWorldPosition(currPosition, prevViewProjectionMatrix);
+
+//     float diff = 1.0;
+//     prevPixel = ivec2(prevProjection.xy * screenResolution);
+
+//     if (prevProjection.x >= 0.0 && prevProjection.y >= 0.0 && prevProjection.x < 1.0 && prevProjection.y < 1.0) {
+//         float prevDepth = texture(sampler2D(prevDepthTexture), prevProjection.xy).x;
+//         vec3 prevPosition = depthToWorldPosition(prevDepth, prevProjection.xy, inverse(prevViewProjectionMatrix));
+//         vec3 delta = abs(prevPosition - currPosition);
+//         diff = max(delta.x, max(delta.y, delta.z));
+//     }
+
+//     // float NDotV = 1.0 - dot(surface.normal, normalize(cameraPosition - surface.position));
+//     // float NDotV2 = NDotV * NDotV;
+//     // float NDotV4 = NDotV2 * NDotV2;
+
+//     float NDotV4 = 0.0;
+
+//     if (diff > mix(0.01, 0.1, NDotV4)) {
+//         reprojectionCount = 0u;
+//     } else {
+//         reprojectionCount = imageLoad(prevReprojectionHistoryTexture, prevPixel).x;
+//     }
+
+//     ++reprojectionCount;
+    
+//     imageStore(reprojectionHistoryTexture, currPixel, uvec4(reprojectionCount));
+//     return diff;
+// }
+
+float reprojectPixel(in vec2 currPixelCoord, inout vec2 prevPixelCoord, inout uint reprojectionCount) {
+    vec2 invScreenSize = 1.0 / vec2(screenSize);
+    vec2 velocity = texture(sampler2D(velocityTexture), currPixelCoord).xy;
+    prevPixelCoord = currPixelCoord - velocity;
 
     float diff = 1.0;
-    prevPixel = ivec2(prevProjection.xy * screenResolution);
 
-    if (prevProjection.x >= 0.0 && prevProjection.y >= 0.0 && prevProjection.x < 1.0 && prevProjection.y < 1.0) {
-        float prevDepth = texture(sampler2D(prevDepthTexture), prevProjection.xy).x;
-        vec3 prevPosition = depthToWorldPosition(prevDepth, prevProjection.xy, inverse(prevViewProjectionMatrix));
-        vec3 delta = abs(prevPosition - currPosition);
-        diff = max(delta.x, max(delta.y, delta.z));
+    if (prevPixelCoord.x >= 0.0 && prevPixelCoord.y >= 0.0 && prevPixelCoord.x <= 1.0 && prevPixelCoord.y <= 1.0) {
+
+        float currDepth = texture(sampler2D(depthTexture), currPixelCoord).x;
+        vec3 currPosition = depthToWorldPosition(currDepth, currPixelCoord, invViewProjectionMatrix);
+
+        // vec2 neighbourCoords[8];
+        // vec2 r = 30.0 * invScreenSize;
+        // neighbourCoords[0] = currPixelCoord + vec2(-r.x, -r.y);
+        // neighbourCoords[1] = currPixelCoord + vec2(   0, -r.y);
+        // neighbourCoords[2] = currPixelCoord + vec2(+r.x, -r.y);
+        // neighbourCoords[3] = currPixelCoord + vec2(-r.x,    0);
+        // neighbourCoords[4] = currPixelCoord + vec2(+r.x,    0);
+        // neighbourCoords[5] = currPixelCoord + vec2(-r.x, +r.y);
+        // neighbourCoords[6] = currPixelCoord + vec2(   0, +r.y);
+        // neighbourCoords[7] = currPixelCoord + vec2(+r.x, +r.y);
+
+        // vec3 minNeighbour = currPosition;
+        // vec3 maxNeighbour = currPosition;
+
+        // for (int i = 0; i < 8; i++) {
+        //     vec3 neighbour = depthToWorldPosition(texture(sampler2D(depthTexture), neighbourCoords[i]).x, neighbourCoords[i], invViewProjectionMatrix);
+        //     minNeighbour = min(minNeighbour, neighbour);
+        //     maxNeighbour = max(maxNeighbour, neighbour);
+        // }
+
+        float prevDepth = texture(sampler2D(prevDepthTexture), prevPixelCoord).x;
+        vec3 prevPosition = depthToWorldPosition(prevDepth, prevPixelCoord, inverse(prevViewProjectionMatrix));
+        // if (all(greaterThan(prevPosition, minNeighbour)) && all(lessThan(prevPosition, maxNeighbour))) {
+            vec3 delta = currPosition - prevPosition;
+            diff = length(delta);
+            // diff = 1.0 - currDepth / prevDepth;
+        // }
     }
 
-    // float NDotV = 1.0 - dot(surface.normal, normalize(cameraPosition - surface.position));
-    // float NDotV2 = NDotV * NDotV;
-    // float NDotV4 = NDotV2 * NDotV2;
-
-    float NDotV4 = 0.0;
-
-    if (diff > mix(0.01, 0.1, NDotV4)) {
+    if (diff > 0.01) {
         reprojectionCount = 0u;
     } else {
-        reprojectionCount = imageLoad(prevReprojectionHistoryTexture, prevPixel).x;
+        reprojectionCount = imageLoad(prevReprojectionHistoryTexture, ivec2(prevPixelCoord * screenResolution)).x;
     }
 
     ++reprojectionCount;
-    
-    imageStore(reprojectionHistoryTexture, currPixel, uvec4(reprojectionCount));
+
+    imageStore(reprojectionHistoryTexture, ivec2(currPixelCoord * screenResolution), uvec4(reprojectionCount));
+
     return diff;
 }
 
@@ -349,17 +400,18 @@ void main() {
     vec3 pixelDirection = createRay(fs_vertexTexture, cameraPosition, cameraRays).direction;
     vec3 finalColour = texture(samplerCube(skyboxEnvironmentTexture), pixelDirection.xyz).rgb;
 
+    float variance = 0.0;
+
     if (surface.exists) {
         // calculateLighting(finalColour, surface, pointLights, pointLightCount, sampler2D(BRDFIntegrationMap), cameraPosition, imageBasedLightingEnabled);
         // finalColour += surface.emission;
         finalColour = vec3(1.0);
         vec4 raytracedFrameColour = texture2D(sampler2D(raytracedFrame), fs_vertexTexture);
 
-        if (raytracedFrameColour.a > 0.0) {
-            finalColour *= raytracedFrameColour.rgb / raytracedFrameColour.a;
-        }
+        finalColour *= raytracedFrameColour.rgb;
+        variance = raytracedFrameColour.a;
     }
-
+    
 
     // for (int i = count - 1; i >= 0; --i) { // blend from far to near
     //     vec3 surfaceColour = vec3(0.0);
@@ -369,19 +421,51 @@ void main() {
     // }
 
     finalColour = pow(finalColour / (finalColour + vec3(1.0)), vec3(1.0/2.2)); 
-    ivec2 prevPixel = pixel;
-    uint count = 0u;
-    float diff = reprojectPixel(surface, pixel, prevPixel, count);
 
-    // if (count == 1u) {
-    //     finalColour = vec3(0.0, 1.0, 0.2);
-    // } else {
-    //     finalColour = vec3(1.0 - 1.0 / (1.0 + 0.1 * float(count)));
+    // finalColour = vec3(heatmap(variance));
+    // finalColour = vec3(fwidth(finalColour));
+    vec2 prevPixel = fs_vertexTexture;
+    uint count = 0u;
+    float diff = reprojectPixel(fs_vertexTexture, prevPixel, count);
+    // finalColour = heatmap(float(count) / 80.0);
+
+    // finalColour = vec3(heatmap(variance));
+
+
+    float NDotV = dot(surface.normal, normalize(cameraPosition - surface.position));
+    NDotV *= NDotV;
+    NDotV *= NDotV;
+
+    bool reproj = diff < mix(0.1, 0.01, NDotV);
+    // finalColour = vec3(1.0, 0.0, 0.0);
+    // if (reproj) {
+    //     uint currMaterialIndex = texture(isampler2D(materialIndexTexture), fs_vertexTexture).x;
+    //     vec2 currTextureCoord = texture(sampler2D(textureCoordTexture), fs_vertexTexture).xy;
+
+    //     uint prevMaterialIndex = texture(isampler2D(prevMaterialIndexTexture), prevPixel).x;
+    //     vec2 prevTextureCoord = texture(sampler2D(prevTextureCoordTexture), prevPixel).xy;
+
+    //     finalColour = vec3(0.0, 1.0, 0.0);
+    //     if (currMaterialIndex == prevMaterialIndex) {
+    //         ivec2 currTexelCoord = ivec2(fract(currTextureCoord + 0.5) * 4096.0);
+    //         ivec2 prevTexelCoord = ivec2(fract(prevTextureCoord + 0.5) * 4096.0);
+    //         if (currTexelCoord == prevTexelCoord) {
+    //             finalColour = vec3(1.0, 1.0, 1.0);
+    //         }
+    //     }
     // }
 
-    // vec2 v = vec2(pixel + 0.5) / vec2(screenSize);
-    // vec3 currPosition = depthToWorldPosition(texture(sampler2D(depthTexture), v).x, v, invViewProjectionMatrix);
-    // finalColour = abs(currPosition - surface.position) * 100.0;
-    finalColour = heatmap(float(count) / 300.0);
+    // if (reproj) {
+    //     Ray currRay = createRay(fs_vertexTexture, cameraPosition, cameraRays);
+    //     Ray prevRay = createRay(prevPixel, prevCameraPosition, prevCameraRays);
+    //     float currDist = texture(sampler2D(linearDepthTexture), fs_vertexTexture).x;
+    //     float prevDist = texture(sampler2D(prevLinearDepthTexture), prevPixel).x;
+    //     vec3 currPosition = currRay.origin + currRay.direction * currDist;
+    //     vec3 prevPosition = prevRay.origin + prevRay.direction * prevDist;
+    //     finalColour = abs(currPosition - prevPosition) * 100.0;
+    // } else {
+    //     finalColour = vec3(1.0, 0.0, 0.0);
+    // }
+
     outColour = vec4(finalColour, 1.0);
 }

@@ -175,8 +175,8 @@
     <ClCompile Include="src\core\scene\Transformation.cpp" />
     <ClCompile Include="src\core\stb_impl.cpp" />
     <ClCompile Include="src\core\util\FileUtils.cpp" />
-    <ClCompile Include="src\main\Main.cpp" />
     <ClCompile Include="src\core\renderer\Texture.cpp" />
+    <ClCompile Include="src\main\Main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\renderer\CubeMap.h" />

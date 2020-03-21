@@ -12,6 +12,18 @@
 #define LOCAL_SIZE_Y 8
 #endif
 
+const float gausian_3x3_kernel[9] = float[9](
+    0.0625, 0.1250, 0.0625,
+    0.1250, 0.2500, 0.1250,
+    0.0625, 0.1250, 0.0625
+);
+
+const vec2 gausian_3x3_offsets[9] = vec2[9](
+    vec2(-1,-1), vec2(0,-1), vec2(+1,-1),
+    vec2(-1, 0), vec2(0, 0), vec2(+1, 0),
+    vec2(-1,+1), vec2(0,+1), vec2(+1,+1)
+);
+
 // CAMERA UNIFORMS
 uniform mat4x3 cameraRays;
 uniform mat4 viewMatrix;
@@ -37,9 +49,13 @@ uniform int materialCount;
 // GBUFFER UNIFORMS
 uniform uvec2 normalTexture;
 uniform uvec2 tangentTexture;
+uniform uvec2 velocityTexture;
 uniform uvec2 textureCoordTexture;
 uniform uvec2 materialIndexTexture;
 uniform uvec2 depthTexture;
+
+uniform uvec2 prevTextureCoordTexture;
+uniform uvec2 prevMaterialIndexTexture;
 uniform uvec2 prevDepthTexture;
 
 // uniform sampler2D albedoTexture;
@@ -72,9 +88,12 @@ uniform int maxRenderScale;
 uniform bool lowResolutionFramePass;
 uniform sampler2D lowResolutionFrame;
 
+uniform uint frameCount;
+
 layout(binding = 0, rgba32f) uniform image2D frameTexture;
-layout (binding = 1, r16ui) uniform uimage2D prevReprojectionHistoryTexture;
-layout (binding = 2, r16ui) uniform uimage2D reprojectionHistoryTexture;
+layout(binding = 1, rgba32f) uniform image2D prevFrameTexture;
+layout (binding = 2, r16ui) uniform uimage2D prevReprojectionHistoryTexture;
+layout (binding = 3, r16ui) uniform uimage2D reprojectionHistoryTexture;
 
 vec2 pixelSeed;
 vec2 workgroupSeed;
@@ -151,39 +170,77 @@ void calculateNextSurfacePoint(in Ray ray, in IntersectionInfo intersection, ino
     surface.reflection = fragment.reflection;
 }
 
-float reprojectPixel(in SurfacePoint surface, in ivec2 currPixel, inout ivec2 prevPixel, inout uint reprojectionCount) {
-    ivec2 resolution = ivec2(1600, 900);
-    vec2 invScreenSize = 1.0 / vec2(resolution);
-    float currDepth = texelFetch(sampler2D(depthTexture), currPixel, 0).x;
-    vec3 currPosition = depthToWorldPosition(currDepth, vec2(currPixel) * invScreenSize, inverse(viewProjectionMatrix));
+bool reprojectPixel(in float NDotV, in vec2 currPixelCoord, inout vec2 prevPixelCoord) {
+    if (frameCount == 0u) {
+        return false;
+    }
 
-    vec4 prevProjection = prevViewProjectionMatrix * vec4(currPosition, 1.0);
-    prevProjection.xyz = 0.5 * (prevProjection.xyz / prevProjection.w) + 0.5;
+    if (NDotV <= 0.0) {
+        return false;
+    }
+
+    vec2 invScreenSize = 1.0 / vec2(screenSize);
+    vec2 velocity = texture(sampler2D(velocityTexture), currPixelCoord).xy;
+    prevPixelCoord = currPixelCoord - velocity;
 
     float diff = 1.0;
-    prevPixel = ivec2(prevProjection.xy * resolution);
 
-    if (prevProjection.x >= 0.0 && prevProjection.y >= 0.0 && prevProjection.x < 1.0 && prevProjection.y < 1.0) {
-        float prevDepth = texelFetch(sampler2D(prevDepthTexture), prevPixel, 0).x;
-        vec3 prevPosition = depthToWorldPosition(prevDepth, vec2(prevPixel) * invScreenSize, inverse(prevViewProjectionMatrix));
-        vec3 delta = abs(prevPosition - currPosition);
-        diff = max(delta.x, max(delta.y, delta.z));
+    if (prevPixelCoord.x >= 0.0 && prevPixelCoord.y >= 0.0 && prevPixelCoord.x <= 1.0 && prevPixelCoord.y <= 1.0) {
+
+        uint currMaterialIndex = texture(isampler2D(materialIndexTexture), currPixelCoord).x;
+        uint prevMaterialIndex = texture(isampler2D(prevMaterialIndexTexture), prevPixelCoord).x;
+
+        if (currMaterialIndex != prevMaterialIndex) {
+            return false;
+        }
+
+        float currDepth = texture(sampler2D(depthTexture), currPixelCoord).x;
+        float currLinearDepth = getLinearDepth(currDepth, nearPlane, farPlane);
+        vec3 currPosition = depthToWorldPosition(currDepth, currPixelCoord, invViewProjectionMatrix);
+        vec2 currTextureCoord = texture(sampler2D(textureCoordTexture), currPixelCoord).xy;
+
+        // uint prevMaterialIndex = texture(isampler2D(prevMaterialIndexTexture), prevPixelPos).x;
+
+        // vec2 neighbourCoords[8];
+        // vec2 r = 30.0 * invScreenSize;
+        // neighbourCoords[0] = currPixelCoord + vec2(-r.x, -r.y);
+        // neighbourCoords[1] = currPixelCoord + vec2(   0, -r.y);
+        // neighbourCoords[2] = currPixelCoord + vec2(+r.x, -r.y);
+        // neighbourCoords[3] = currPixelCoord + vec2(-r.x,    0);
+        // neighbourCoords[4] = currPixelCoord + vec2(+r.x,    0);
+        // neighbourCoords[5] = currPixelCoord + vec2(-r.x, +r.y);
+        // neighbourCoords[6] = currPixelCoord + vec2(   0, +r.y);
+        // neighbourCoords[7] = currPixelCoord + vec2(+r.x, +r.y);
+
+        // vec3 minNeighbour = currPosition;
+        // vec3 maxNeighbour = currPosition;
+
+        // for (int i = 0; i < 8; i++) {
+        //     vec3 neighbour = depthToWorldPosition(texture(sampler2D(depthTexture), neighbourCoords[i]).x, neighbourCoords[i], invViewProjectionMatrix);
+        //     minNeighbour = min(minNeighbour, neighbour);
+        //     maxNeighbour = max(maxNeighbour, neighbour);
+        // }
+
+        float prevDepth = texture(sampler2D(prevDepthTexture), prevPixelCoord).x;
+        float prevLinearDepth = getLinearDepth(prevDepth, nearPlane, farPlane);
+        vec3 prevPosition = depthToWorldPosition(prevDepth, prevPixelCoord, inverse(prevViewProjectionMatrix));
+        vec2 prevTextureCoord = texture(sampler2D(prevTextureCoordTexture), prevPixelCoord).xy;
+        // if (all(greaterThan(prevPosition, minNeighbour)) && all(lessThan(prevPosition, maxNeighbour))) {
+            // vec2 delta = currTextureCoord - prevTextureCoord;
+            vec3 delta = currPosition - prevPosition;
+            diff = length(delta);
+            // diff = 1.0 - currDepth / prevDepth;
+            // currLinearDepth = floor(currLinearDepth * 100.0) * 0.01;
+            // prevLinearDepth = floor(prevLinearDepth * 100.0) * 0.01;
+            // diff = abs(currLinearDepth - prevLinearDepth);  
+        // }
+
+        float NDotV2 = NDotV * NDotV;
+        float NDotV4 = NDotV2 * NDotV2;
+        return diff < mix(0.1, 0.01, NDotV4); // When NDotV is close to 0, the surface is being viewed at a grazing angle, and pixel space depth gradients are higher.
     }
 
-    // float NDotV = 1.0 - dot(surface.normal, normalize(cameraPosition - surface.position));
-    // float NDotV2 = NDotV * NDotV;
-    // float NDotV4 = NDotV2 * NDotV2;
-
-    if (diff > 0.05) {//mix(0.01, 0.1, NDotV4)) {
-        reprojectionCount = 0u;
-    } else {
-        reprojectionCount = imageLoad(prevReprojectionHistoryTexture, prevPixel).x;
-    }
-
-    ++reprojectionCount;
-    
-    imageStore(reprojectionHistoryTexture, currPixel, uvec4(reprojectionCount));
-    return diff;
+    return false;
 }
 
 vec3 calculateDirectLight(in SurfacePoint surface) {
@@ -209,7 +266,7 @@ vec3 calculateDirectLight(in SurfacePoint surface) {
         if (!occlusionRayIntersectsBVH(sampleRay, false, intersection)) {
             // Fragment frag = getInterpolatedIntersectionFragment(intersection);
             Fragment frag = emissiveSample.surfaceFragment;
-            attenuation = getAttenuation(sampleDistance, 1.0, 0.0, 0.0);
+            attenuation = getAttenuation(sampleDistance, 1.0, 0.0, 1.0);
             radiance += frag.emission * attenuation * NDotL;
         }
     }
@@ -231,16 +288,20 @@ vec3 calculateIndirectLight(in SurfacePoint surface) {
     if (sampleRayIntersectsBVH(sampleRay, false, intersection)) {
         Fragment frag = getInterpolatedIntersectionFragment(intersection);
         SurfacePoint intersectionSurface = fragmentToSurfacePoint(frag, sampleRay);
-        float attenuation = getAttenuation(intersection.dist);
+        float attenuation = getAttenuation(intersection.dist, 1.0, 0.0, 1.0);
         float NDotL = dot(surface.normal, sampleDirection);
-        radiance += calculateDirectLight(intersectionSurface) * frag.albedo * attenuation * NDotL;
+        radiance += calculateDirectLight(intersectionSurface) * attenuation * NDotL;
     }
 
     return radiance;
 }
 
 void calculatePathTracedLighting(inout vec3 finalColour, in SurfacePoint surface, inout vec2 seed) {
-    finalColour += calculateDirectLight(surface);
+    
+    // vec3 directLight = calculateDirectLight(surface);
+    vec3 indirectLight = calculateIndirectLight(surface);
+    
+    finalColour += indirectLight;
     // vec3 radiance = vec3(0.0);
     // vec3 energy = vec3(1.0);
 
@@ -412,38 +473,45 @@ void calculateFullResolutionFrame() {
     pixelSeed = pixelPos;
     workgroupSeed = workgroupPos;
 
-    // float edgeMagnitude = getEdgeMagnitude(pixelPos, invFrameSize, 2.0);
+    vec2 jitter = nextRandomVec2(pixelSeed) * invFrameSize;
+    vec2 jitteredPixelPos = pixelPos + jitter; // jitter sample
+    SurfacePoint surface = readSurfacePoint(jitteredPixelPos);
     
-    pixelPos += nextRandomVec2(pixelSeed) * invFrameSize; // jitter sample
-    SurfacePoint surface = readSurfacePoint(pixelPos);
-    
-    vec4 finalColour = vec4(0.0);
-
-    ivec2 prevPixelCoord = pixelCoord;
-    uint reprojectionCount = 0u;
-    reprojectPixel(surface, pixelCoord, prevPixelCoord, reprojectionCount);
-    
-    if (reprojectionCount > 1u)
-        finalColour = imageLoad(frameTexture, prevPixelCoord).rgba;
-
-    // if (edgeMagnitude > 0.0225) {
-
-
+    vec3 finalColour = vec3(0.0);
+    float NDotV = -1.0;
 
     if (surface.exists) {
         vec3 colour = vec3(0.0);
-        // colour = calculateAmbientOcclusion(surface);
-
+        NDotV = dot(surface.normal, normalize(cameraPosition - surface.position));
         calculatePathTracedLighting(colour, surface, pixelSeed);
-        finalColour += vec4(colour, 1.0);
+        finalColour += colour;
     }
-    // } else {
-    //     finalColour += texture2D(lowResolutionFrame, pixelPos);
-    // }
 
+    vec2 prevPixelPos = pixelPos;
 
-    finalColour = vec4(vec3(1.0 - 1.0 / (1.0 + 0.1 * float(reprojectionCount))), 1.0);
-    imageStore(frameTexture, pixelCoord, finalColour);
+    vec3 lum = vec3(0.2125, 0.7154, 0.0721);
+    if (reprojectPixel(NDotV, pixelPos, prevPixelPos)) {
+        // uint currMaterialIndex = texture(isampler2D(materialIndexTexture), pixelPos).x;
+        // vec2 currTextureCoord = texture(sampler2D(textureCoordTexture), prevPixelPos).xy;
+
+        // uint prevMaterialIndex = texture(isampler2D(prevMaterialIndexTexture), prevPixelPos).x;
+        // vec2 prevTextureCoord = texture(sampler2D(prevTextureCoordTexture), prevPixelPos).xy;
+
+        // if (currMaterialIndex == prevMaterialIndex) {
+        //     ivec2 currTexelCoord = ivec2(fract(currTextureCoord + 0.5) * 8.0);
+        //     ivec2 prevTexelCoord = ivec2(fract(prevTextureCoord + 0.5) * 8.0);
+        //     if (currTexelCoord == prevTexelCoord) {
+        //         vec4 prevPixel = imageLoad(prevFrameTexture, ivec2(prevPixelPos * frameSize + 0.5)).rgba;
+        //         vec3 prevColour = prevPixel.rgb;
+        //         finalColour = mix(finalColour, prevColour, 0.99);
+        //     }
+        // }
+        
+        vec4 prevPixel = imageLoad(prevFrameTexture, ivec2(prevPixelPos * frameSize + 0.5)).rgba;
+        vec3 prevColour = prevPixel.rgb;
+        finalColour = mix(finalColour, prevColour, 0.99);
+    }
+    imageStore(frameTexture, pixelCoord, vec4(finalColour, 1.0));
 }
 
 layout (local_size_x = LOCAL_SIZE_X, local_size_y = LOCAL_SIZE_Y) in;

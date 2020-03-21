@@ -9,7 +9,8 @@ in VertexData {
     vec3 worldNormal;
     vec3 worldTangent;
     vec2 vertexTexture;
-    float projectedDepth;
+    vec4 projectedPosition;
+    vec4 prevProjectedPosition;
     flat int hasTangent;
     flat int materialIndex;
 } fs_in;
@@ -43,8 +44,10 @@ uniform bool transparentRenderPass;
 
 out vec2 outNormal;
 out vec2 outTangent;
+out vec2 outVelocity;
 out vec2 outTextureCoord;
 out int outMaterialIndex;
+out float outLinearDepth;
 
 // out vec4 outAlbedo;
 // out vec3 outEmission;
@@ -69,10 +72,18 @@ void insertNode(in Fragment fragment) {
 }
 
 void main() {
+    vec2 invScreenSize = 1.0 / vec2(screenSize);
+    vec2 currProjectedPixelPos = fs_in.projectedPosition.xy / fs_in.projectedPosition.w * 0.5 + 0.5;
+    vec2 prevProjectedPixelPos = fs_in.prevProjectedPosition.xy / fs_in.prevProjectedPosition.w * 0.5 + 0.5;
+    // currProjectedPixelPos = floor(currProjectedPixelPos * screenSize) * invScreenSize;
+    // prevProjectedPixelPos = floor(prevProjectedPixelPos * screenSize) * invScreenSize;
+
     outNormal = encodeNormal(normalize(fs_in.worldNormal));
     outTangent = fs_in.hasTangent != 0 ? encodeNormal(normalize(fs_in.worldTangent)) : vec2(0.0);
+    outVelocity = currProjectedPixelPos - prevProjectedPixelPos;
     outTextureCoord = fs_in.vertexTexture;
     outMaterialIndex = fs_in.materialIndex;
+    outLinearDepth = length(fs_in.worldPosition - cameraPosition);
 
 //     Material material;
 //     bool hasMaterial = false;

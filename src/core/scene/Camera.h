@@ -8,6 +8,8 @@ class Camera {
 public:
 	Camera(double fov = M_PI/2.0, double aspect = 4.0/3.0, double near = 0.1, double far = 1000.0);
 
+	virtual void preRender(double dt, double partialTicks);
+
 	virtual void render(double dt, double partialTicks);
 
 	virtual void applyUniforms(ShaderProgram* shaderProgram);
@@ -48,6 +50,7 @@ public:
 
 protected:
 	Transformation m_transform;
+	Transformation m_prevTransform;
 	double m_fov;
 	double m_aspect;
 	double m_near;
@@ -64,6 +67,7 @@ protected:
 	dmat4 m_prevViewProjectionMatrix; // Used for frame reprojection
 
 	dmat4x3 m_screenRays;
+	dmat4x3 m_prevScreenRays;
 };
 
 class CubemapCamera : public Camera {

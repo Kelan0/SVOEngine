@@ -146,16 +146,18 @@ void GeometryBuffer::upload(const std::vector<Mesh::vertex>& vertices, const std
 void GeometryBuffer::buildBVH() {
 	m_bvh = BVH::build(m_vertices, m_triangles);
 
-	const std::vector<BVHBinaryNode>& linearNodes = m_bvh->createLinearNodes();
-	const std::vector<BVH::PrimitiveReference>& primitiveReferences = m_bvh->getPrimitiveReferences();
+	if (m_bvh != NULL) {
+		const std::vector<BVHBinaryNode>& linearNodes = m_bvh->createLinearNodes();
+		const std::vector<BVH::PrimitiveReference>& primitiveReferences = m_bvh->getPrimitiveReferences();
 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhNodeBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BVHBinaryNode) * linearNodes.size(), &linearNodes[0], GL_STATIC_DRAW);
-	
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhReferenceBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BVH::PrimitiveReference) * primitiveReferences.size(), &primitiveReferences[0], GL_STATIC_DRAW);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhNodeBuffer);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BVHBinaryNode) * linearNodes.size(), &linearNodes[0], GL_STATIC_DRAW);
 
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_bvhReferenceBuffer);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(BVH::PrimitiveReference) * primitiveReferences.size(), &primitiveReferences[0], GL_STATIC_DRAW);
+
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	}
 }
 
 void GeometryBuffer::applyUniforms(ShaderProgram* shaderProgram) {

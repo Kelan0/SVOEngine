@@ -62,7 +62,7 @@ void FirstPersonController::update(double dt, double partialTicks) {
 		}
 	}
 
-	double acceleration = 0.07; // seconds to get upto full speed
+	double acceleration = 0.07; // seconds to start upto full speed
 	double motionSq = dot(movement, movement);
 	if (motionSq > 0.0) {
 		movement /= sqrt(motionSq);

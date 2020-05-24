@@ -11,6 +11,7 @@
 #include "core/scene/FirstPersonController.h"
 #include "core/scene/SceneComponents.h"
 #include "core/scene/Camera.h"
+#include "core/profiler/Profiler.h"
 #include "core/Engine.h"
 
 
@@ -40,61 +41,82 @@ void SceneObject::updateBoundingTree(TransformChain& parentTransform) {
 }
 
 void SceneObject::preRender(TransformChain& parentTransform, double dt, double partialTicks) {
+	PROFILE_SCOPE("SceneObject::preRender()");
 	dmat4 currTransformation = m_currTransform.getModelMatrix();
 	TransformChain currTransform;
 	currTransform.previous = &parentTransform;
 	currTransform.sceneObject = this;
 	currTransform.transformationMatrix = parentTransform.transformationMatrix * currTransformation;
 
-	for (auto it = m_components.begin(); it != m_components.end(); it++) {
-		if (it->second->enabled) {
-			it->second->component->preRender(currTransform, dt, partialTicks);
-		}
+	{
+		PROFILE_SCOPE("SceneObject::preRender():RENDER_COMPONENTS");
+			for (auto it = m_components.begin(); it != m_components.end(); it++) {
+				if (it->second->enabled) {
+					it->second->component->preRender(currTransform, dt, partialTicks);
+				}
+			}
 	}
 
-	for (auto it = m_children.begin(); it != m_children.end(); it++) {
-		if (it->second->enabled) {
-			it->second->object->preRender(currTransform, dt, partialTicks);
+	{
+		PROFILE_SCOPE("SceneObject::preRender():RENDER_CHILDREN");
+		for (auto it = m_children.begin(); it != m_children.end(); it++) {
+			if (it->second->enabled) {
+				it->second->object->preRender(currTransform, dt, partialTicks);
+			}
 		}
 	}
 }
 
 void SceneObject::render(TransformChain& parentTransform, double dt, double partialTicks) {
+	PROFILE_SCOPE("SceneObject::render()");
 	dmat4 currTransformation = m_currTransform.getModelMatrix();
 	TransformChain currTransform;
 	currTransform.previous = &parentTransform;
 	currTransform.sceneObject = this;
 	currTransform.transformationMatrix = parentTransform.transformationMatrix * currTransformation;
 
-	for (auto it = m_components.begin(); it != m_components.end(); it++) {
-		if (it->second->enabled) {
-			it->second->component->render(currTransform, dt, partialTicks);
-		}
+	{
+		PROFILE_SCOPE("SceneObject::render():RENDER_COMPONENTS");
+			for (auto it = m_components.begin(); it != m_components.end(); it++) {
+				if (it->second->enabled) {
+					it->second->component->render(currTransform, dt, partialTicks);
+				}
+			}
 	}
 
-	for (auto it = m_children.begin(); it != m_children.end(); it++) {
-		if (it->second->enabled) {
-			it->second->object->render(currTransform, dt, partialTicks);
+	{
+		PROFILE_SCOPE("SceneObject::render():RENDER_CHILDREN");
+		for (auto it = m_children.begin(); it != m_children.end(); it++) {
+			if (it->second->enabled) {
+				it->second->object->render(currTransform, dt, partialTicks);
+			}
 		}
 	}
 }
 
 void SceneObject::renderDirect(ShaderProgram* shaderProgram, TransformChain& parentTransform, double dt, double partialTicks) {
+	PROFILE_SCOPE("SceneObject::renderDirect()");
 	dmat4 currTransformation = m_currTransform.getModelMatrix();
 	TransformChain currTransform;
 	currTransform.previous = &parentTransform;
 	currTransform.sceneObject = this;
 	currTransform.transformationMatrix = parentTransform.transformationMatrix * currTransformation;
-	
-	for (auto it = m_components.begin(); it != m_components.end(); it++) {
-		if (it->second->enabled) {
-			it->second->component->renderDirect(shaderProgram, currTransform, dt, partialTicks);
+
+	{
+		PROFILE_SCOPE("SceneObject::renderDirect():RENDER_COMPONENTS");
+		for (auto it = m_components.begin(); it != m_components.end(); it++) {
+			if (it->second->enabled) {
+				it->second->component->renderDirect(shaderProgram, currTransform, dt, partialTicks);
+			}
 		}
 	}
-	
-	for (auto it = m_children.begin(); it != m_children.end(); it++) {
-		if (it->second->enabled) {
-			it->second->object->renderDirect(shaderProgram, currTransform, dt, partialTicks);
+
+	{
+		PROFILE_SCOPE("SceneObject::renderDirect():RENDER_CHILDREN");
+		for (auto it = m_children.begin(); it != m_children.end(); it++) {
+			if (it->second->enabled) {
+				it->second->object->renderDirect(shaderProgram, currTransform, dt, partialTicks);
+			}
 		}
 	}
 }
@@ -361,6 +383,7 @@ SceneGraph::~SceneGraph() {
 }
 
 void SceneGraph::render(double dt, double partialTicks) {
+	PROFILE_SCOPE("SceneGraph::render()");
 	assert(m_root != NULL);
 	assert(m_camera != NULL);
 	assert(m_controller != NULL);

@@ -1,10 +1,14 @@
 #include "core/Engine.h"
 #include "core/InputHandler.h"
 #include "core/ResourceHandler.h"
+#include "core/profiler/Profiler.h"
 #include "core/renderer/ScreenRenderer.h"
 #include "core/renderer/RaytraceRenderer.h"
 #include "core/renderer/LayeredDepthBuffer.h"
 #include "core/scene/Scene.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_opengl3.h>
+#include <imgui/imgui_impl_sdl.h>
 
 // TODO: window resize
 
@@ -74,15 +78,22 @@ Engine::Engine(int argc, char** argv) {
 	if (!this->parseLaunchArgs(argc, argv)) {
 		throw std::runtime_error("Failed to parse engine launch arguments\n");
 	}
+	Profiler::startProfiling("Runtime");
 }
 
 Engine::~Engine() {
+	info("Destroying GUI\n");
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplSDL2_Shutdown();
+	ImGui::DestroyContext();
+
 	info("Deleting OpenGL context\n");
 	SDL_GL_DeleteContext(m_window.context);
 
 	info("Destroying SDL window\n");
 	SDL_DestroyWindow(m_window.handle);
 	SDL_Quit();
+	Profiler::stopProfiling();
 }
 
 bool Engine::init() {
@@ -108,6 +119,11 @@ bool Engine::init() {
 
 	if (!this->initScene()) {
 		error("Failed to initialize scene\n");
+		return false;
+	}
+
+	if (!this->initGui()) {
+		error("Failed to initialize GUI\n");
 		return false;
 	}
 
@@ -153,6 +169,7 @@ bool Engine::parseLaunchArgs(int argc, char** argv) {
 }
 
 bool Engine::initWindow() {
+	// ........this is messy, why did I do this?
 	info("Initializing game window...\n");
 
 #define QUIT_AND_RETURN(ret) SDL_Quit(); return ret;
@@ -234,6 +251,16 @@ bool Engine::initScene() {
 	return true;
 }
 
+bool Engine::initGui() {
+	info("Initializing GUI\n");
+
+	ImGui::CreateContext();
+	ImGui_ImplSDL2_InitForOpenGL(m_window.handle, m_window.context);
+	ImGui_ImplOpenGL3_Init("#version 140");
+
+	return true;
+}
+
 
 bool Engine::update() {
 	static const double smoothingFactor = 0.1;
@@ -311,43 +338,67 @@ double Engine::getRunTime() const {
 }
 
 bool Engine::updateFrame(double dt, double partialTicks) {
-	SDL_GL_SwapWindow(m_window.handle);
+	PROFILE_SCOPE("Frame");
 
-	//char dataStr[100];
-	//sprintf(dataStr, "%5.2f fps, %5.2 ups", 1.0 / m_frameState.smoothedDeltaTime, 1.0 / m_tickState.smoothedDeltaTime);
-	//SDL_SetWindowTitle(m_window.handle, (m_window.title + " [" + dataStr + "]").c_str());
+	PROFILE_EXPR(SDL_GL_SwapWindow(m_window.handle));
 
 	m_inputHandler->update();
 
-	SDL_Event event;
-	while (SDL_PollEvent(&event)) {
-		if (event.type == SDL_QUIT) {
-			return false;
-		}
+	{
+		PROFILE_SCOPE("SDL_PollEvent(&event)");
 
-		m_inputHandler->processEvent(event);
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) {
+			ImGui_ImplSDL2_ProcessEvent(&event);
+
+			if (event.type == SDL_QUIT) {
+				return false;
+			}
+
+			m_inputHandler->processEvent(event);
+		}
 	}
 
 
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-	glEnable(GL_DEPTH_TEST);
-	//glDepthMask(GL_FALSE);
-	//glDepthFunc(GL_ALWAYS); // all fragments pass
-	glPolygonMode(GL_FRONT_AND_BACK, m_debugRenderWireframe ? GL_LINE : GL_FILL);
-	//glClearColor(0.25F, 0.5F, 0.75F, 1.0F);
+	{
+		PROFILE_SCOPE("ImGui::NewFrame()");
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplSDL2_NewFrame(m_window.handle);
+		ImGui::NewFrame();
+	}
 
-	m_screenRenderer->bindFramebuffer();
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//m_screenRenderer->getLayeredDepthBuffer()->startRender();
-	m_scene->render(dt, partialTicks);
-	glDepthMask(GL_TRUE);
-	//m_screenRenderer->getLayeredDepthBuffer()->finishRender();
-	m_screenRenderer->unbindFramebuffer();
-	m_raytraceRenderer->render(dt, partialTicks);
-	m_screenRenderer->render(dt, partialTicks);
-	m_scene->postRender(dt, partialTicks);
-	//m_renderer->drawScene(m_scene);
+	{
+		PROFILE_SCOPE("RenderStage");
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+		glEnable(GL_DEPTH_TEST);
+		//glDepthMask(GL_FALSE);
+		//glDepthFunc(GL_ALWAYS); // all fragments pass
+		glPolygonMode(GL_FRONT_AND_BACK, m_debugRenderWireframe ? GL_LINE : GL_FILL);
+		//glClearColor(0.25F, 0.5F, 0.75F, 1.0F);
+
+		m_screenRenderer->bindFramebuffer();
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//m_screenRenderer->getLayeredDepthBuffer()->startRender();
+		m_scene->render(dt, partialTicks);
+		glDepthMask(GL_TRUE);
+		//m_screenRenderer->getLayeredDepthBuffer()->finishRender();
+		m_screenRenderer->unbindFramebuffer();
+		m_raytraceRenderer->render(dt, partialTicks);
+		m_screenRenderer->render(dt, partialTicks);
+		m_scene->postRender(dt, partialTicks);
+		//m_renderer->drawScene(m_scene);
+	}
+
+	{
+		PROFILE_SCOPE("ImGui::Render()");
+		glViewport(0, 0, m_window.size.x, m_window.size.y);
+
+		Profiler::currentProfiler()->renderUI();
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
+
 	return true;
 }
 
@@ -461,4 +512,8 @@ RaytraceRenderer* Engine::getRaytraceRenderer() const {
 
 SceneGraph* Engine::getScene() const {
 	return m_scene;
+}
+
+bool Engine::hasGLContext() const {
+	return m_window.context != NULL;
 }

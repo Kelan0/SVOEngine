@@ -104,6 +104,8 @@ public:
 	RaytraceRenderer* getRaytraceRenderer() const;
 
 	SceneGraph* getScene() const;
+
+	bool hasGLContext() const;
 private:
 	Engine(int argc, char** argv);
 
@@ -122,6 +124,8 @@ private:
 	bool initRenderer();
 
 	bool initScene();
+
+	bool initGui();
 
 	bool updateFrame(double dt, double partialTicks);
 

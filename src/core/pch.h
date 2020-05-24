@@ -14,6 +14,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <stack>
+#include <thread>
 #include <set>
 #include <map>
 #include <unordered_map>
@@ -27,6 +29,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_access.hpp>
 //#include <glm/gtx/vec_swizzle.hpp>
+
+#define VAR(x) x
 
 #define log(fmt, ...) printf(fmt, ##__VA_ARGS__)
 

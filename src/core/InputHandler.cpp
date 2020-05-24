@@ -1,5 +1,6 @@
 #include "core/InputHandler.h"
 #include "core/Engine.h"
+#include "core/Profiler/Profiler.h"
 
 InputHandler::InputHandler(SDL_Window* windowHandle) {
 	m_windowHandle = windowHandle;
@@ -28,6 +29,7 @@ InputHandler::InputHandler(SDL_Window* windowHandle) {
 InputHandler::~InputHandler() {}
 
 void InputHandler::update() {
+	PROFILE_SCOPE("InputHandler::update()");
 	for (int i = 0; i < KEYBOARD_SIZE; i++) {
 		m_keysPressed[i] = false;
 		m_keysReleased[i] = false;

@@ -10,6 +10,7 @@
 #include "core/renderer/LayeredDepthBuffer.h"
 #include "core/renderer/RaytraceRenderer.h"
 #include "core/renderer/Voxelizer.h"
+#include "core/profiler/Profiler.h"
 #include "core/scene/Scene.h"
 #include "core/scene/BVH.h"
 #include "core/scene/Camera.h"
@@ -94,38 +95,29 @@ CubemapCamera* depthCamera = NULL;
 ShaderProgram* shadowShader = NULL;
 
 void ScreenRenderer::render(double dt, double partialTicks) {
-	this->unbindFramebuffer();
+	PROFILE_SCOPE("ScreenRenderer::render()");
 
-	//if (depthCamera == NULL) {
-	//	depthCamera = new CubemapCamera();
-	//}
-	//
-	//if (shadowShader == NULL) {
-	//	shadowShader = new ShaderProgram();
-	//	shadowShader->addShader(GL_VERTEX_SHADER, "shaders/raster/shadow/vert.glsl");
-	//	shadowShader->addShader(GL_GEOMETRY_SHADER, "shaders/raster/shadow/geom.glsl");
-	//	shadowShader->addShader(GL_FRAGMENT_SHADER, "shaders/raster/shadow/frag.glsl");
-	//	shadowShader->addAttribute(0, "vs_vertexPosition");
-	//	shadowShader->completeProgram();
-	//}
-	//
-	//Camera* camera = Engine::scene()->getCamera();
-	//depthCamera->transform().setTranslation(camera->transform().getTranslation());
-	//depthCamera->transform().setOrientation(camera->transform().getOrientation());
-	//depthCamera->transform().setScale(camera->transform().getScale());
-	//depthCamera->render(dt, partialTicks);
-	//
-	//t_cubeDepthFramebuffer->bind(128, 128);
-	//glClearColor(0.25F, 0.5F, 0.75F, 1.0F);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//Engine::scene()->setCamera(depthCamera);
-	//Engine::scene()->setSimpleRenderEnabled(true);
-	////Engine::instance()->setDebugRenderLightingEnabled(false); // TODO: flag to ignore material separation, render whole mesh in one call
-	//Engine::scene()->renderDirect(shadowShader, dt, partialTicks);
-	////Engine::instance()->setDebugRenderLightingEnabled(true);
-	//Engine::scene()->setSimpleRenderEnabled(false);
-	//Engine::scene()->setCamera(camera);
-	//t_cubeDepthFramebuffer->unbind();
+	Texture* temp;
+	// Swap depth textures for next frame.
+	temp = m_textureCoordTexture, m_textureCoordTexture = m_prevTextureCoordTexture, m_prevTextureCoordTexture = temp;
+	temp = m_materialIndexTexture, m_materialIndexTexture = m_prevMaterialIndexTexture, m_prevMaterialIndexTexture = temp;
+	temp = m_depthTexture, m_depthTexture = m_prevDepthTexture, m_prevDepthTexture = temp;
+	temp = m_linearDepthTexture, m_linearDepthTexture = m_prevLinearDepthTexture, m_prevLinearDepthTexture = temp;
+
+	m_framebuffer->bind(m_width, m_height);
+	m_framebuffer->createColourTextureAttachment(3, m_textureCoordTexture->getTextureName());
+	m_framebuffer->createColourTextureAttachment(4, m_materialIndexTexture->getTextureName());
+	m_framebuffer->createColourTextureAttachment(5, m_linearDepthTexture->getTextureName());
+	m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());
+
+	// Swap reprojection history textures for next frame.
+
+	Texture* tempReprojectionHistoryTexture = m_reprojectionHistoryTexture;
+	m_reprojectionHistoryTexture = m_prevReprojectionHistoryTexture;
+	m_prevReprojectionHistoryTexture = tempReprojectionHistoryTexture;
+
+	m_frameCount++;
+	this->unbindFramebuffer();
 
 	glViewport(0, 0, m_width, m_height);
 
@@ -177,39 +169,6 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	m_prevDepthTexture->makeResident(true);
 	m_screenShader->setUniform("prevDepthTexture", m_prevDepthTexture->getPackedTextureHandle());
 
-	//m_albedoTexture->makeResident(true);
-	//m_screenShader->setUniform("albedoTexture", m_albedoTexture->getPackedTextureHandle());
-	//
-	//m_emissionTexture->makeResident(true);
-	//m_screenShader->setUniform("emissionTexture", m_emissionTexture->getPackedTextureHandle());
-	//
-	//m_normalTexture->makeResident(true);
-	//m_screenShader->setUniform("normalTexture", m_normalTexture->getPackedTextureHandle());
-	//
-	//m_roughnessTexture->makeResident(true);
-	//m_screenShader->setUniform("roughnessTexture", m_roughnessTexture->getPackedTextureHandle());
-	//
-	//m_metalnessTexture->makeResident(true);
-	//m_screenShader->setUniform("metalnessTexture", m_metalnessTexture->getPackedTextureHandle());
-	//
-	//m_ambientOcclusionTexture->makeResident(true);
-	//m_screenShader->setUniform("ambientOcclusionTexture", m_ambientOcclusionTexture->getPackedTextureHandle());
-	//
-	//m_irradianceTexture->makeResident(true);
-	//m_screenShader->setUniform("irradianceTexture", m_irradianceTexture->getPackedTextureHandle());
-	//
-	//m_reflectionTexture->makeResident(true);
-	//m_screenShader->setUniform("reflectionTexture", m_reflectionTexture->getPackedTextureHandle());
-	//
-	//m_transmissionTexture->makeResident(true);
-	//m_screenShader->setUniform("transmissionTexture", m_transmissionTexture->getPackedTextureHandle());
-	//
-	//m_depthTexture->makeResident(true);
-	//m_screenShader->setUniform("depthTexture", m_depthTexture->getPackedTextureHandle());
-	//
-	//m_prevDepthTexture->makeResident(true);
-	//m_screenShader->setUniform("prevDepthTexture", m_prevDepthTexture->getPackedTextureHandle());
-
 	if (skybox != NULL) {
 		skybox->getEnvironmentMap()->makeResident(true);
 		m_screenShader->setUniform("skyboxEnvironmentTexture", skybox->getEnvironmentMap()->getPackedTextureHandle());
@@ -226,12 +185,6 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 
 	Engine::raytraceRenderer()->getFrameTexture()->makeResident(true);
 	m_screenShader->setUniform("raytracedFrame", Engine::raytraceRenderer()->getFrameTexture()->getPackedTextureHandle());
-	//Engine::raytraceRenderer()->bindFillTexture(6);
-
-	//Engine::scene()->getStaticGeometryBuffer()->bindVertexBuffer(3);
-	//Engine::scene()->getStaticGeometryBuffer()->bindTriangleBuffer(4);
-	//Engine::scene()->getStaticGeometryBuffer()->bindBVHNodeBuffer(5);
-	//Engine::scene()->getStaticGeometryBuffer()->bindBVHReferenceBuffer(6);
 
 	LightProbe::getBRDFIntegrationMap()->makeResident(true);
 	m_screenShader->setUniform("BRDFIntegrationMap", LightProbe::getBRDFIntegrationMap()->getPackedTextureHandle());
@@ -242,42 +195,21 @@ void ScreenRenderer::render(double dt, double partialTicks) {
 	this->drawFullscreenQuad();
 	ShaderProgram::use(NULL);
 
-	uint32_t zero = 0;
-	uint32_t invalidIndex = 0xFFFFFFFF;
-	glClearTexImage(m_pixelNodeHeadTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, &invalidIndex);
-
-	uint32_t nodeCount;
-	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_pixelNodeCounter);
-	glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(uint32_t), &nodeCount);
-	glClearBufferData(GL_ATOMIC_COUNTER_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
-	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
-	
-	if (nodeCount > m_allocatedNodes) {
-		// deallocate nodes after prolonged time of too many being allocated
-		nodeCount = (uint32_t)(nodeCount * 1.1);
-		this->setAllocatedNodes(nodeCount);
-	}
-
-	Texture* temp;
-	// Swap depth textures for next frame.
-	temp = m_textureCoordTexture, m_textureCoordTexture = m_prevTextureCoordTexture, m_prevTextureCoordTexture = temp;
-	temp = m_materialIndexTexture, m_materialIndexTexture = m_prevMaterialIndexTexture, m_prevMaterialIndexTexture = temp;
-	temp = m_depthTexture, m_depthTexture = m_prevDepthTexture, m_prevDepthTexture = temp;
-	temp = m_linearDepthTexture, m_linearDepthTexture = m_prevLinearDepthTexture, m_prevLinearDepthTexture = temp;
-
-	m_framebuffer->bind(m_width, m_height);
-	m_framebuffer->createColourTextureAttachment(3, m_textureCoordTexture->getTextureName());
-	m_framebuffer->createColourTextureAttachment(4, m_materialIndexTexture->getTextureName());
-	m_framebuffer->createColourTextureAttachment(5, m_linearDepthTexture->getTextureName());
-	m_framebuffer->createDepthTextureAttachment(m_depthTexture->getTextureName());
-
-	// Swap reprojection history textures for next frame.
-
-	Texture* tempReprojectionHistoryTexture = m_reprojectionHistoryTexture;
-	m_reprojectionHistoryTexture = m_prevReprojectionHistoryTexture;
-	m_prevReprojectionHistoryTexture = tempReprojectionHistoryTexture;
-
-	m_frameCount++;
+	//uint32_t zero = 0;
+	//uint32_t invalidIndex = 0xFFFFFFFF;
+	//glClearTexImage(m_pixelNodeHeadTexture, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, &invalidIndex);
+	//
+	//uint32_t nodeCount;
+	//glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, m_pixelNodeCounter);
+	//glGetBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, sizeof(uint32_t), &nodeCount);
+	//glClearBufferData(GL_ATOMIC_COUNTER_BUFFER, GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
+	//glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, 0);
+	//
+	//if (nodeCount > m_allocatedNodes) {
+	//	// deallocate nodes after prolonged time of too many being allocated
+	//	nodeCount = (uint32_t)(nodeCount * 1.1);
+	//	this->setAllocatedNodes(nodeCount);
+	//}
 }
 
 void ScreenRenderer::applyUniforms(ShaderProgram* shaderProgram) {
@@ -361,8 +293,6 @@ void ScreenRenderer::setResolution(uint32_t width, uint32_t height) {
 		glBindTexture(GL_TEXTURE_2D, 0);
 		
 		this->setAllocatedNodes(width * height * 4);
-
-
 
 		//delete t_cubeDepthFramebuffer;
 		//t_cubeDepthFramebuffer = new Framebuffer();

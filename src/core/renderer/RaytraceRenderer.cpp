@@ -5,6 +5,7 @@
 #include "core/renderer/ScreenRenderer.h"
 #include "core/renderer/MaterialManager.h"
 #include "core/renderer/geometry/GeometryBuffer.h"
+#include "core/profiler/Profiler.h"
 #include "core/scene/Scene.h"
 #include "core/Engine.h"
 
@@ -29,6 +30,8 @@ RaytraceRenderer::~RaytraceRenderer() {
 }
 
 void RaytraceRenderer::render(double dt, double partialTicks) {
+	PROFILE_SCOPE("RaytraceRenderer::render()");
+
 	constexpr int workgroupSizeX = 8;
 	constexpr int workgroupSizeY = 8;
 	ShaderProgram::use(m_raytraceShader);

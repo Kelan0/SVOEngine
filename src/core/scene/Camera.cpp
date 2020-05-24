@@ -4,6 +4,7 @@
 #include "core/scene/Scene.h"
 #include "core/scene/SceneComponents.h"
 #include "core/renderer/ShaderProgram.h"
+#include "core/profiler/Profiler.h"
 
 Camera::Camera(double fov, double aspect, double near, double far) {
 	m_fov = fov;
@@ -27,6 +28,7 @@ void Camera::preRender(double dt, double partialTicks) {
 }
 
 void Camera::render(double dt, double partialTicks) {
+	PROFILE_SCOPE("Camera::render()");
 	dvec3 position = m_transform.getTranslation();
 	dmat3 axis = m_transform.getAxisVectors();
 
